@@ -126,8 +126,13 @@ export class MessageBridgeService {
       .withUrl(this.wsUri)
       .withAutomaticReconnect()
       .build()
-    this.connection.on("ReceiveMessage", (messageDto: Message) => {
-      this.handleIncomingMessage(messageDto)
+    this.connection.on("ReceiveMessage", (messageString: string) => {
+      try {
+        var messageDto = JSON.parse(messageString) as Message;
+        this.handleIncomingMessage(messageDto)  
+      }catch( e){
+        console.log("Incerrect message received: " + messageString);
+      }
     })
     return this.connection
       .start()
@@ -166,9 +171,9 @@ export class MessageBridgeService {
   }
 
   protected internalSendMessage(msg: Message) {
-    console.log("COUNT")
     this.history.push(msg)
-    this.connection?.invoke("SendMessage", msg).catch((err) => {
+    var msgJson = JSON.stringify(msg)
+    this.connection?.invoke("SendMessage", msgJson).catch((err) => {
       msg.errors.push(err)
       return console.error(err.toString())
     })
