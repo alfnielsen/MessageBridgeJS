@@ -11,7 +11,6 @@ export class Message<TPayload = any, TResponse = any, TSchema = any> {
   public payload?: TPayload
   public schema?: TSchema
   public direction: MessageDirection
-  public errors: (Error | string)[] = []
   constructor(
     name: string,
     type: MessageType,

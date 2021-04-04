@@ -19,6 +19,8 @@ export class MessageBridgeService {
   } = {}
   protected subscriptionQuery: IMessageServiceQuerySubscription<any, any>[] = []
   history: Message[] = []
+  bridgeErrors: (Error|string)[] = []
+
 
   sendMessage<TPayload = any, TResponse = any, TSchema = any>(
     msg: Message<TPayload, TResponse, TSchema>,
@@ -60,19 +62,7 @@ export class MessageBridgeService {
       direction,
     })
   }
-  sendCommand<TPayload = any, TResponse = any, TSchema = any>({
-    name,
-    command,
-    callback,
-  }: {
-    name: string
-    command: TPayload
-    callback?: (msg: Message<TResponse>) => void
-  }) {
-    const msg = this.createCommandMessage(name, command)
-    this.sendMessage<TPayload, TResponse, TSchema>(msg, callback)
-  }
-
+  
   createQueryMessage<TPayload = any>(
     name: string,
     payload: TPayload,
@@ -86,32 +76,47 @@ export class MessageBridgeService {
     })
   }
 
-  createAndSendQueryMessage<TQuery = any, TResponse = any>({
+  sendCommand<TPayload = any, TResponse = any, TSchema = any>({
     name,
-    query,
+    payload,
     callback,
   }: {
     name: string
-    query: TQuery
-    callback: (msg: Message<TResponse>) => void
+    payload: TPayload
+    callback?: (msg: Message<TResponse>) => void
   }) {
-    const msg = this.createQueryMessage(name, query)
-    this.sendMessage<TQuery, TResponse>(msg, callback)
-    return msg
+    const msg = this.createCommandMessage(name, payload)
+    this.sendMessage<TPayload, TResponse, TSchema>(msg, callback)
+    return msg;
+  }
+
+  sendQuery<TPayload = any, TResponse = any, TSchema = any>({
+    name,
+    payload,
+    callback,
+  }: {
+    name: string
+    payload: TPayload
+    callback?: (msg: Message<TResponse>) => void
+  }) {
+    const msg = this.createQueryMessage(name, payload)
+    this.sendMessage<TPayload, TResponse, TSchema>(msg, callback)
+    return msg;
   }
 
   subscribeQuery<TPayload = any, TResponse = any>(
     opt: IMessageServiceQuerySubscription<TPayload, TResponse>
   ) {
     //call right away
-    this.createAndSendQueryMessage({
+    this.sendQuery({
       name: opt.name,
-      query: opt.query,
+      payload: opt.query,
       callback: opt.update,
     })
     //then subscribe
     this.subscriptionQuery.push(opt)
-    return () => {
+
+    return /*unsubscribe*/ () => {
       const index = this.subscriptionQuery.findIndex((x) => x === opt)
       if (index > 0) {
         this.subscriptionQuery.splice(index, 1)
@@ -130,7 +135,8 @@ export class MessageBridgeService {
       try {
         var messageDto = JSON.parse(messageString) as Message;
         this.handleIncomingMessage(messageDto)  
-      }catch( e){
+      }catch(e){
+        this.bridgeErrors.push(e)
         console.log("Incerrect message received: " + messageString);
       }
     })
@@ -174,7 +180,7 @@ export class MessageBridgeService {
     this.history.push(msg)
     var msgJson = JSON.stringify(msg)
     this.connection?.invoke("SendMessage", msgJson).catch((err) => {
-      msg.errors.push(err)
+      this.bridgeErrors.push(err)
       return console.error(err.toString())
     })
   }

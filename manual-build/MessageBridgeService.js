@@ -18,7 +18,7 @@ export var MessageType;
     MessageType["Error"] = "Error";
 })(MessageType || (MessageType = {}));
 
-var Message = /** @class */ (function () {
+var Message = (function () {
     function Message(name, type, payload, schema, trackId, created, direction) {
         if (trackId === void 0) { trackId = uuidv4(); }
         if (created === void 0) { created = new Date(Date.now()).toJSON(); }
@@ -44,7 +44,7 @@ var Message = /** @class */ (function () {
 export { Message };
 
 
-var MessageBridgeService = /** @class */ (function () {
+var MessageBridgeService = (function () {
     function MessageBridgeService(wsUri) {
         this.wsUri = wsUri;
         this.connected = false;
@@ -52,6 +52,7 @@ var MessageBridgeService = /** @class */ (function () {
         this.subscriptionEventList = {};
         this.subscriptionQuery = [];
         this.history = [];
+        this.bridgeErrors = [];
     }
     MessageBridgeService.prototype.sendMessage = function (msg, callback) {
         msg.direction = MessageDirection.ToServer;
@@ -80,11 +81,6 @@ var MessageBridgeService = /** @class */ (function () {
             direction: direction,
         });
     };
-    MessageBridgeService.prototype.sendCommand = function (_a) {
-        var name = _a.name, command = _a.command, callback = _a.callback;
-        var msg = this.createCommandMessage(name, command);
-        this.sendMessage(msg, callback);
-    };
     MessageBridgeService.prototype.createQueryMessage = function (name, payload, direction) {
         if (direction === void 0) { direction = MessageDirection.ToServer; }
         return Message.create({
@@ -94,23 +90,29 @@ var MessageBridgeService = /** @class */ (function () {
             direction: direction,
         });
     };
-    MessageBridgeService.prototype.createAndSendQueryMessage = function (_a) {
-        var name = _a.name, query = _a.query, callback = _a.callback;
-        var msg = this.createQueryMessage(name, query);
+    MessageBridgeService.prototype.sendCommand = function (_a) {
+        var name = _a.name, payload = _a.payload, callback = _a.callback;
+        var msg = this.createCommandMessage(name, payload);
+        this.sendMessage(msg, callback);
+        return msg;
+    };
+    MessageBridgeService.prototype.sendQuery = function (_a) {
+        var name = _a.name, payload = _a.payload, callback = _a.callback;
+        var msg = this.createQueryMessage(name, payload);
         this.sendMessage(msg, callback);
         return msg;
     };
     MessageBridgeService.prototype.subscribeQuery = function (opt) {
         var _this = this;
         //call right away
-        this.createAndSendQueryMessage({
+        this.sendQuery({
             name: opt.name,
-            query: opt.query,
+            payload: opt.query,
             callback: opt.update,
         });
         //then subscribe
         this.subscriptionQuery.push(opt);
-        return function () {
+        return /*unsubscribe*/ function () {
             var index = _this.subscriptionQuery.findIndex(function (x) { return x === opt; });
             if (index > 0) {
                 _this.subscriptionQuery.splice(index, 1);
@@ -130,6 +132,7 @@ var MessageBridgeService = /** @class */ (function () {
                 _this.handleIncomingMessage(messageDto);
             }
             catch (e) {
+                _this.bridgeErrors.push(e);
                 console.log("Incerrect message received: " + messageString);
             }
         });
@@ -167,14 +170,15 @@ var MessageBridgeService = /** @class */ (function () {
         });
     };
     MessageBridgeService.prototype.internalSendMessage = function (msg) {
+        var _this = this;
         var _a;
         this.history.push(msg);
         var msgJson = JSON.stringify(msg);
         (_a = this.connection) === null || _a === void 0 ? void 0 : _a.invoke("SendMessage", msgJson).catch(function (err) {
-            msg.errors.push(err);
+            _this.bridgeErrors.push(err);
             return console.error(err.toString());
         });
     };
-    return MessageBridgeService;  
+    return MessageBridgeService;
 }());
 export { MessageBridgeService };

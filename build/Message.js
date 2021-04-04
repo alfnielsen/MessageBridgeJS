@@ -5,7 +5,6 @@ var Message = /** @class */ (function () {
         if (trackId === void 0) { trackId = uuidv4(); }
         if (created === void 0) { created = new Date(Date.now()).toJSON(); }
         if (direction === void 0) { direction = MessageDirection.ToServer; }
-        this.errors = [];
         this.name = name;
         this.type = type;
         this.trackId = trackId;
