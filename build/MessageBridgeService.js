@@ -48,6 +48,15 @@ var MessageBridgeService = /** @class */ (function () {
             direction: direction,
         });
     };
+    MessageBridgeService.prototype.createEventMessage = function (name, payload, direction) {
+        if (direction === void 0) { direction = MessageDirection.ToServer; }
+        return Message.create({
+            name: name,
+            type: MessageType.Event,
+            payload: payload,
+            direction: direction,
+        });
+    };
     MessageBridgeService.prototype.sendCommand = function (_a) {
         var name = _a.name, payload = _a.payload, callback = _a.callback;
         var msg = this.createCommandMessage(name, payload);
@@ -57,6 +66,12 @@ var MessageBridgeService = /** @class */ (function () {
     MessageBridgeService.prototype.sendQuery = function (_a) {
         var name = _a.name, payload = _a.payload, callback = _a.callback;
         var msg = this.createQueryMessage(name, payload);
+        this.sendMessage(msg, callback);
+        return msg;
+    };
+    MessageBridgeService.prototype.sendEvent = function (_a) {
+        var name = _a.name, payload = _a.payload, callback = _a.callback;
+        var msg = this.createEventMessage(name, payload);
         this.sendMessage(msg, callback);
         return msg;
     };
@@ -116,9 +131,8 @@ var MessageBridgeService = /** @class */ (function () {
     };
     MessageBridgeService.prototype.receiveEventMessage = function (eventMsg) {
         var _this = this;
-        if (this.subscriptionEventList[eventMsg.name] &&
-            this.subscriptionEventList[eventMsg.trackId]) {
-            this.subscriptionEventList[eventMsg.trackId].forEach(function (x) { return x(eventMsg); });
+        if (this.subscriptionEventList[eventMsg.name]) {
+            this.subscriptionEventList[eventMsg.name].forEach(function (x) { return x(eventMsg); });
         }
         this.subscriptionQuery
             .filter(function (x) { var _a, _b; return (_b = (_a = x.triggers) === null || _a === void 0 ? void 0 : _a.some(function (x) { return x === eventMsg.name; })) !== null && _b !== void 0 ? _b : false; })

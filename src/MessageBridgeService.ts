@@ -76,6 +76,19 @@ export class MessageBridgeService {
     })
   }
 
+  createEventMessage<TPayload = any>(
+    name: string,
+    payload: TPayload,
+    direction = MessageDirection.ToServer
+  ) {
+    return Message.create({
+      name,
+      type: MessageType.Event,
+      payload,
+      direction,
+    })
+  }
+
   sendCommand<TPayload = any, TResponse = any, TSchema = any>({
     name,
     payload,
@@ -100,6 +113,20 @@ export class MessageBridgeService {
     callback?: (msg: Message<TResponse>) => void
   }) {
     const msg = this.createQueryMessage(name, payload)
+    this.sendMessage<TPayload, TResponse, TSchema>(msg, callback)
+    return msg;
+  }
+
+  sendEvent<TPayload = any, TResponse = any, TSchema = any>({
+    name,
+    payload,
+    callback,
+  }: {
+    name: string
+    payload: TPayload
+    callback?: (msg: Message<TResponse>) => void
+  }) {
+    const msg = this.createEventMessage(name, payload)
     this.sendMessage<TPayload, TResponse, TSchema>(msg, callback)
     return msg;
   }
@@ -162,11 +189,8 @@ export class MessageBridgeService {
     }
   }
   protected receiveEventMessage(eventMsg: Message) {
-    if (
-      this.subscriptionEventList[eventMsg.name] &&
-      this.subscriptionEventList[eventMsg.trackId]
-    ) {
-      this.subscriptionEventList[eventMsg.trackId].forEach((x) => x(eventMsg))
+    if (this.subscriptionEventList[eventMsg.name]) {
+      this.subscriptionEventList[eventMsg.name].forEach((x) => x(eventMsg))
     }
     this.subscriptionQuery
       .filter((x) => x.triggers?.some((x) => x === eventMsg.name) ?? false)
