@@ -54,8 +54,8 @@ bridge.sendCommand({
 // Query (subscribe)
 bridge.subscribeQuery({
     name: "GetTotoItem",
-    query: { id: 25},
-    trioggers: ["UpdatedTotoIem"],
+    query: { id: 25 },
+    triggers: ["UpdatedTotoIem"],
     onUpdate: (todo: ITodoItem) => {
         // update ui
     }
