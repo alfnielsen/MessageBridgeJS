@@ -8,21 +8,17 @@
 
 var uuidv4 = uuid.v4; // from uuid lib
 
-export var MessageType;
-(function (MessageType) {
-    MessageType["Command"] = "Command";
-    MessageType["CommandResponse"] = "CommandResponse";
-    MessageType["Query"] = "Query";
-    MessageType["QueryResponse"] = "QueryResponse";
-    MessageType["Event"] = "Event";
-    MessageType["Error"] = "Error";
-})(MessageType || (MessageType = {}));
+var MessageType = {};
+MessageType["Command"] = "Command";
+MessageType["CommandResponse"] = "CommandResponse";
+MessageType["Query"] = "Query";
+MessageType["QueryResponse"] = "QueryResponse";
+MessageType["Event"] = "Event";
+MessageType["Error"] = "Error";
 
-export var MessageDirection;
-(function (MessageDirection) {
-    MessageDirection["ToClient"] = "ToClient";
-    MessageDirection["ToServer"] = "ToServer";
-})(MessageDirection || (MessageDirection = {}));
+var MessageDirection = {};
+MessageDirection["ToClient"] = "ToClient";
+MessageDirection["ToServer"] = "ToServer";
 
 var Message = (function () {
     function Message(name, type, payload, schema, trackId, created, direction) {
@@ -47,8 +43,6 @@ var Message = (function () {
     };
     return Message;
 }());
-export { Message };
-
 
 var MessageBridgeService = (function () {
     function MessageBridgeService(wsUri) {
@@ -208,5 +202,4 @@ var MessageBridgeService = (function () {
     };
     return MessageBridgeService;
 }());
-export { MessageBridgeService };
 
