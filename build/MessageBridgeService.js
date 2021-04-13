@@ -1,7 +1,6 @@
 import * as signalR from "@microsoft/signalr";
 import { Message } from "./Message";
-import { MessageDirection } from "./MessageDirection";
-import { MessageType } from "./MessageType";
+import { MessageDirection, MessageType } from "./MessageBridgeInterfaces";
 var MessageBridgeService = /** @class */ (function () {
     function MessageBridgeService(wsUri) {
         this.wsUri = wsUri;
@@ -12,21 +11,21 @@ var MessageBridgeService = /** @class */ (function () {
         this.history = [];
         this.bridgeErrors = [];
     }
-    MessageBridgeService.prototype.sendMessage = function (msg, callback) {
+    MessageBridgeService.prototype.sendMessage = function (msg, onSuccess, onError) {
         msg.direction = MessageDirection.ToServer;
-        if (callback) {
-            this.subscriptionTrackIdList[msg.trackId] = callback;
+        if (onSuccess || onError) {
+            this.subscriptionTrackIdList[msg.trackId] = { onSuccess: onSuccess, onError: onError };
         }
         this.internalSendMessage(msg);
     };
     MessageBridgeService.prototype.subscribeEvent = function (_a) {
         var _this = this;
-        var name = _a.name, callback = _a.callback;
+        var name = _a.name, onEvent = _a.onEvent;
         if (!this.subscriptionEventList[name])
             this.subscriptionEventList[name] = [];
-        this.subscriptionEventList[name].push(callback);
+        this.subscriptionEventList[name].push(onEvent);
         return function () {
-            var index = _this.subscriptionEventList[name].findIndex(function (x) { return x === callback; });
+            var index = _this.subscriptionEventList[name].findIndex(function (x) { return x === onEvent; });
             _this.subscriptionEventList[name].splice(index, 1);
         };
     };
@@ -58,21 +57,21 @@ var MessageBridgeService = /** @class */ (function () {
         });
     };
     MessageBridgeService.prototype.sendCommand = function (_a) {
-        var name = _a.name, payload = _a.payload, callback = _a.callback;
+        var name = _a.name, payload = _a.payload, onSuccess = _a.onSuccess, onError = _a.onError;
         var msg = this.createCommandMessage(name, payload);
-        this.sendMessage(msg, callback);
+        this.sendMessage(msg, onSuccess, onError);
         return msg;
     };
     MessageBridgeService.prototype.sendQuery = function (_a) {
-        var name = _a.name, payload = _a.payload, callback = _a.callback;
+        var name = _a.name, payload = _a.payload, onSuccess = _a.onSuccess, onError = _a.onError;
         var msg = this.createQueryMessage(name, payload);
-        this.sendMessage(msg, callback);
+        this.sendMessage(msg, onSuccess, onError);
         return msg;
     };
     MessageBridgeService.prototype.sendEvent = function (_a) {
-        var name = _a.name, payload = _a.payload, callback = _a.callback;
+        var name = _a.name, payload = _a.payload;
         var msg = this.createEventMessage(name, payload);
-        this.sendMessage(msg, callback);
+        this.sendMessage(msg);
         return msg;
     };
     MessageBridgeService.prototype.subscribeQuery = function (opt) {
@@ -81,7 +80,7 @@ var MessageBridgeService = /** @class */ (function () {
         this.sendQuery({
             name: opt.name,
             payload: opt.query,
-            callback: opt.update,
+            onSuccess: opt.onUpdate,
         });
         //then subscribe
         this.subscriptionQuery.push(opt);
@@ -92,6 +91,7 @@ var MessageBridgeService = /** @class */ (function () {
             }
         };
     };
+    // can to overwritten by consumer!
     MessageBridgeService.prototype.onError = function (err) { };
     MessageBridgeService.prototype.connect = function () {
         var _this = this;
@@ -106,7 +106,7 @@ var MessageBridgeService = /** @class */ (function () {
             }
             catch (e) {
                 _this.bridgeErrors.push(e);
-                console.log("Incerrect message received: " + messageString);
+                console.log("Incorrect message received: " + messageString);
             }
         });
         return this.connection
@@ -119,10 +119,16 @@ var MessageBridgeService = /** @class */ (function () {
         });
     };
     MessageBridgeService.prototype.handleIncomingMessage = function (messageDto) {
+        var _a, _b, _c, _d;
         var msg = Message.fromDto(messageDto);
         this.history.push(msg);
         if (this.subscriptionTrackIdList[msg.trackId]) {
-            this.subscriptionTrackIdList[msg.trackId](msg);
+            if (msg.type === MessageType.Error) {
+                (_b = (_a = this.subscriptionTrackIdList[msg.trackId]).onError) === null || _b === void 0 ? void 0 : _b.call(_a, msg.payload, msg);
+            }
+            else {
+                (_d = (_c = this.subscriptionTrackIdList[msg.trackId]).onSuccess) === null || _d === void 0 ? void 0 : _d.call(_c, msg.payload, msg);
+            }
             delete this.subscriptionTrackIdList[msg.trackId];
         }
         if (msg.type === MessageType.Event) {
@@ -132,13 +138,13 @@ var MessageBridgeService = /** @class */ (function () {
     MessageBridgeService.prototype.receiveEventMessage = function (eventMsg) {
         var _this = this;
         if (this.subscriptionEventList[eventMsg.name]) {
-            this.subscriptionEventList[eventMsg.name].forEach(function (x) { return x(eventMsg); });
+            this.subscriptionEventList[eventMsg.name].forEach(function (callback) { return callback(eventMsg.payload, eventMsg); });
         }
         this.subscriptionQuery
             .filter(function (x) { var _a, _b; return (_b = (_a = x.triggers) === null || _a === void 0 ? void 0 : _a.some(function (x) { return x === eventMsg.name; })) !== null && _b !== void 0 ? _b : false; })
             .forEach(function (x) {
             var msg = _this.createQueryMessage(x.name, x.query);
-            _this.sendMessage(msg, x.update);
+            _this.sendMessage(msg, x.onUpdate);
         });
     };
     MessageBridgeService.prototype.internalSendMessage = function (msg) {
@@ -154,3 +160,4 @@ var MessageBridgeService = /** @class */ (function () {
     return MessageBridgeService;
 }());
 export { MessageBridgeService };
+//# sourceMappingURL=MessageBridgeService.js.map
