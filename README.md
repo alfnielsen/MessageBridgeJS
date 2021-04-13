@@ -7,7 +7,7 @@ The Bridge enabled sending Commands, Queries and Event between a frontend and ba
 through a websocket.
 
 
-![Overview-diagram](docs/Overview-diagram-rename.jpg)
+![Overview-diagram](docs/Overview-diagram.jpg)
 
 ### Bridge commands:
 Most used commands:
