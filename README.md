@@ -1,4 +1,4 @@
-# MessageBridgeServiceJS
+# Message Bridge (JS)
 A CQRS Hook. 
 
 Extreme simplified Commands, Queries and Events for applications UI.
@@ -70,6 +70,33 @@ bridge.subscribeEvent({
 })
 
 ```
+
+### Install
+
+```
+> npm i message-bridge-js
+```
+
+```
+> yarn add message-bridge-js
+```
+
+### CDN
+Use directly in a browser: (CDN)
+
+The dependencies (@microsoft/signalr and uuid) most be added before this script
+
+```html
+<!-- @microsoft/signalr -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/5.0.4/signalr.min.js" integrity="sha512-h0xYAfohLfIHQffhHCtxoKLpHronITi3ocJHetJf4K1YCeCeEwAFA3gYsIYCrzFSHftQwXALtXvZIw51RoJ1hw==" crossOrigin="anonymous"></script>
+<!-- uuid -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
+<!-- message-bridge-js -->
+<script src="https://unpkg.com/message-bridge-js/cdn-build/MessageBridgeService.js"></script>
+```
+
+_For a specific version use:_
+https://unpkg.com/message-bridge-js@0.0.1/cdn-build/MessageBridgeService.js
 
 
 ### Backend

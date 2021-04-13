@@ -1,0 +1,11 @@
+**/node_modules/**
+docs/
+examples/
+src/
+tests/
+.*
+**/*.json
+**/*config.js
+yarn*
+
+
