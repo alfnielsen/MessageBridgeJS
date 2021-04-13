@@ -2,7 +2,7 @@ import WS from "jest-websocket-mock"
 import { Message } from "../src/Message"
 import { MessageBridgeService } from "../src/MessageBridgeService"
 import { MessageDirection } from "../src/MessageDirection"
-import { MessageType } from "../src/MessageType"
+import { MessageInterfaces } from "../src/MessageBridgeInterfaces"
 
 interface TodoItem {
   id: number
@@ -37,7 +37,7 @@ it("should re-call query on event messages from the server", async () => {
   // SERVER:
   var serverFromMsg = Message.create<TodoItem[]>({
     name: "UpdateTodoItem",
-    type: MessageType.QueryResponse,
+    type: MessageInterfaces.QueryResponse,
     direction: MessageDirection.ToClient,
     payload: [{ id: 1, title: "title1" }],
   })
@@ -47,7 +47,7 @@ it("should re-call query on event messages from the server", async () => {
   // SERVER:
   var serverFromMsg = Message.create<TodoItem[]>({
     name: "UpdateTodoItemEvent",
-    type: MessageType.Event,
+    type: MessageInterfaces.Event,
     direction: MessageDirection.ToClient,
   })
   // send (2)
@@ -57,22 +57,22 @@ it("should re-call query on event messages from the server", async () => {
   expect(mbs.history.length).toBe(4)
   //
   expect(mbs.history[0].name).toBe("UpdateTodoItem")
-  expect(mbs.history[0].type).toBe(MessageType.Query)
+  expect(mbs.history[0].type).toBe(MessageInterfaces.Query)
   expect(mbs.history[0].payload).toMatchObject({ nameLike: "test" })
   expect(mbs.history[0].direction).toBe(MessageDirection.ToServer)
   //
   expect(mbs.history[1].name).toBe("UpdateTodoItem")
-  expect(mbs.history[1].type).toBe(MessageType.QueryResponse)
+  expect(mbs.history[1].type).toBe(MessageInterfaces.QueryResponse)
   expect(mbs.history[1].payload).toMatchObject([{ id: 1, title: "title1" }])
   expect(mbs.history[1].direction).toBe(MessageDirection.ToClient)
   //
   expect(mbs.history[2].name).toBe("UpdateTodoItemEvent")
-  expect(mbs.history[2].type).toBe(MessageType.Event)
+  expect(mbs.history[2].type).toBe(MessageInterfaces.Event)
   expect(mbs.history[2].payload).toBeUndefined()
   expect(mbs.history[2].direction).toBe(MessageDirection.ToClient)
   //
   expect(mbs.history[3].name).toBe("UpdateTodoItem")
-  expect(mbs.history[3].type).toBe(MessageType.Query)
+  expect(mbs.history[3].type).toBe(MessageInterfaces.Query)
   expect(mbs.history[3].payload).toMatchObject({ nameLike: "test" })
   expect(mbs.history[3].direction).toBe(MessageDirection.ToServer)
   expect(mbs.history[3].trackId).not.toBe("tract_1")

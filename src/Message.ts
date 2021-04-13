@@ -1,11 +1,10 @@
-import { v4 as uuidv4 } from "uuid"
-
-import { MessageDirection } from "./MessageDirection"
-import { MessageType } from "./MessageType"
+import {v4 as uuidv4} from "uuid"
+import {MessageDirection, MessageType} from "./MessageBridgeInterfaces";
 
 export class Message<TPayload = any, TResponse = any, TSchema = any> {
   public name: string
   public type: MessageType
+  public isError: boolean
   public trackId: string
   public created: string
   public payload?: TPayload
@@ -27,6 +26,7 @@ export class Message<TPayload = any, TResponse = any, TSchema = any> {
     this.payload = payload
     this.schema = schema
     this.direction = direction
+    this.isError = type === MessageType.Error
   }
 
   static create<TPayload = any, TResponse = any, TSchema = any>(opt: {

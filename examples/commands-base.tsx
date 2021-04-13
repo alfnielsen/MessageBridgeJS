@@ -3,7 +3,7 @@ import { Message } from "../src/Message"
 import { MessageBridgeService } from "../src/MessageBridgeService"
 
 const msgBridge = new MessageBridgeService("ws:/localhost:8080")
-msgBridge.connect()
+/*await*/ msgBridge.connect()
 
 /**
  * React hook
@@ -28,8 +28,8 @@ function useQuery<TQuery, TResponse>(
       name,
       query,
       triggers,
-      update: (msg) => {
-        setState(msg.payload)
+      onUpdate: (item, msg) => {
+        setState(item)
       },
     })
     return () => unsubscribe()
@@ -45,9 +45,12 @@ export const CreateTodoItem = (command: ICreateTodoItem) => {
   return new Promise((resolve, reject) => {
     msgBridge.sendCommand<ICreateTodoItem, number>({
       name: "CreateTodoItem",
-      command,
-      callback: (msg: Message<number>) => {
-        resolve(msg.payload ?? -1)
+      payload: command,
+      onSuccess: (id: number, msg) => {
+        resolve(id)
+      },
+      onError: (error, msg) => {
+        reject(error)
       },
     })
   })
@@ -59,7 +62,7 @@ export interface IDeleteTodoItem {
   id: number
 }
 export const DeleteTodoItem = (command: IDeleteTodoItem) => {
-  msgBridge.sendCommand({ name: "DeleteTodoItem", command })
+  msgBridge.sendCommand({ name: "DeleteTodoItem", payload: command })
 }
 
 export interface IUpdateTodoItem {

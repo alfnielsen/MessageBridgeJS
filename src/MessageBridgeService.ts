@@ -1,9 +1,14 @@
 import * as signalR from "@microsoft/signalr"
-
-import { IMessageServiceQuerySubscription } from "./IMessageServiceQuerySubscription"
 import { Message } from "./Message"
-import { MessageDirection } from "./MessageDirection"
-import { MessageType } from "./MessageType"
+import {
+  IMessageServiceQuerySubscription,
+  MessageDirection,
+  MessageType,
+  SubscribeResponse,
+  SubscribeResponseWithCatch
+} from "./MessageBridgeInterfaces";
+
+
 
 export class MessageBridgeService {
   connected = false
@@ -12,39 +17,43 @@ export class MessageBridgeService {
   constructor(public wsUri: string) {}
 
   protected subscriptionTrackIdList: {
-    [trackId: string]: (value: Message) => void
+    [trackId: string]: SubscribeResponseWithCatch<any>
   } = {}
+
   protected subscriptionEventList: {
-    [eventName: string]: ((value: Message) => void)[]
+    [eventName: string]: SubscribeResponse<any>[]
   } = {}
+
   protected subscriptionQuery: IMessageServiceQuerySubscription<any, any>[] = []
+
   history: Message[] = []
   bridgeErrors: (Error|string)[] = []
 
 
   sendMessage<TPayload = any, TResponse = any, TSchema = any>(
     msg: Message<TPayload, TResponse, TSchema>,
-    callback?: (msg: Message<TResponse>) => void
+    onSuccess?: SubscribeResponse<TResponse>,
+    onError?: SubscribeResponse<any>,
   ) {
     msg.direction = MessageDirection.ToServer
-    if (callback) {
-      this.subscriptionTrackIdList[msg.trackId] = callback
+    if (onSuccess || onError) {
+      this.subscriptionTrackIdList[msg.trackId] = { onSuccess, onError}
     }
     this.internalSendMessage(msg)
   }
 
   subscribeEvent<TResponse = any>({
     name,
-    callback,
+    onEvent,
   }: {
     name: string
-    callback: (msg: Message<TResponse>) => void
+    onEvent: SubscribeResponse<TResponse>
   }) {
     if (!this.subscriptionEventList[name]) this.subscriptionEventList[name] = []
-    this.subscriptionEventList[name].push(callback)
+    this.subscriptionEventList[name].push(onEvent)
     return () => {
       const index = this.subscriptionEventList[name].findIndex(
-        (x) => x === callback
+        (x) => x === onEvent
       )
       this.subscriptionEventList[name].splice(index, 1)
     }
@@ -92,42 +101,44 @@ export class MessageBridgeService {
   sendCommand<TPayload = any, TResponse = any, TSchema = any>({
     name,
     payload,
-    callback,
+    onSuccess,
+    onError,
   }: {
     name: string
     payload: TPayload
-    callback?: (msg: Message<TResponse>) => void
+    onSuccess?: SubscribeResponse<TResponse>
+    onError?: SubscribeResponse<any>
   }) {
     const msg = this.createCommandMessage(name, payload)
-    this.sendMessage<TPayload, TResponse, TSchema>(msg, callback)
+    this.sendMessage<TPayload, TResponse, TSchema>(msg, onSuccess, onError)
     return msg;
   }
 
   sendQuery<TPayload = any, TResponse = any, TSchema = any>({
     name,
     payload,
-    callback,
+    onSuccess,
+    onError,
   }: {
     name: string
     payload: TPayload
-    callback?: (msg: Message<TResponse>) => void
+    onSuccess?: SubscribeResponse<TResponse>
+    onError?: SubscribeResponse<any>
   }) {
     const msg = this.createQueryMessage(name, payload)
-    this.sendMessage<TPayload, TResponse, TSchema>(msg, callback)
+    this.sendMessage<TPayload, TResponse, TSchema>(msg, onSuccess, onError)
     return msg;
   }
 
   sendEvent<TPayload = any, TResponse = any, TSchema = any>({
     name,
-    payload,
-    callback,
+    payload
   }: {
     name: string
     payload: TPayload
-    callback?: (msg: Message<TResponse>) => void
   }) {
     const msg = this.createEventMessage(name, payload)
-    this.sendMessage<TPayload, TResponse, TSchema>(msg, callback)
+    this.sendMessage<TPayload, TResponse, TSchema>(msg)
     return msg;
   }
 
@@ -138,7 +149,7 @@ export class MessageBridgeService {
     this.sendQuery({
       name: opt.name,
       payload: opt.query,
-      callback: opt.update,
+      onSuccess: opt.onUpdate,
     })
     //then subscribe
     this.subscriptionQuery.push(opt)
@@ -151,6 +162,7 @@ export class MessageBridgeService {
     }
   }
 
+  // can to overwritten by consumer!
   onError(err: string) {}
 
   connect() {
@@ -160,11 +172,11 @@ export class MessageBridgeService {
       .build()
     this.connection.on("ReceiveMessage", (messageString: string) => {
       try {
-        var messageDto = JSON.parse(messageString) as Message;
+        const messageDto = JSON.parse(messageString) as Message;
         this.handleIncomingMessage(messageDto)  
       }catch(e){
         this.bridgeErrors.push(e)
-        console.log("Incerrect message received: " + messageString);
+        console.log("Incorrect message received: " + messageString);
       }
     })
     return this.connection
@@ -177,11 +189,15 @@ export class MessageBridgeService {
       })
   }
 
-  handleIncomingMessage(messageDto: Message) {
-    var msg = Message.fromDto(messageDto)
+  protected handleIncomingMessage(messageDto: Message) {
+    const msg = Message.fromDto(messageDto)
     this.history.push(msg)
     if (this.subscriptionTrackIdList[msg.trackId]) {
-      this.subscriptionTrackIdList[msg.trackId](msg)
+      if(msg.type === MessageType.Error){
+        this.subscriptionTrackIdList[msg.trackId].onError?.(msg.payload, msg)
+      }else{
+        this.subscriptionTrackIdList[msg.trackId].onSuccess?.(msg.payload, msg)
+      }
       delete this.subscriptionTrackIdList[msg.trackId]
     }
     if (msg.type === MessageType.Event) {
@@ -190,19 +206,19 @@ export class MessageBridgeService {
   }
   protected receiveEventMessage(eventMsg: Message) {
     if (this.subscriptionEventList[eventMsg.name]) {
-      this.subscriptionEventList[eventMsg.name].forEach((x) => x(eventMsg))
+      this.subscriptionEventList[eventMsg.name].forEach((callback) => callback(eventMsg.payload, eventMsg))
     }
     this.subscriptionQuery
       .filter((x) => x.triggers?.some((x) => x === eventMsg.name) ?? false)
       .forEach((x) => {
         const msg = this.createQueryMessage(x.name, x.query)
-        this.sendMessage(msg, x.update)
+        this.sendMessage(msg, x.onUpdate)
       })
   }
 
   protected internalSendMessage(msg: Message) {
     this.history.push(msg)
-    var msgJson = JSON.stringify(msg)
+    const msgJson = JSON.stringify(msg)
     this.connection?.invoke("SendMessage", msgJson).catch((err) => {
       this.bridgeErrors.push(err)
       return console.error(err.toString())
