@@ -172,12 +172,18 @@ export class MessageBridgeService {
       .withAutomaticReconnect()
       .build()
     this.connection.on("ReceiveMessage", (messageString: string | Message) => {
+      let messageDto: Message
       try {
-        const messageDto = typeof messageString === "string" ? JSON.parse(messageString) as Message : messageString;
-        this.handleIncomingMessage(messageDto)  
+        messageDto = typeof messageString === "string" ? JSON.parse(messageString) as Message : messageString;
       }catch(e){
         this.bridgeErrors.push(e)
         console.log("Incorrect message received: " + messageString);
+        return
+      }
+      try {
+        this.handleIncomingMessage(messageDto)
+      }catch(e){
+        console.log("Error in response handle for message: " + e);
       }
     })
     return this.connection

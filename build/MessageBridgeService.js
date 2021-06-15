@@ -101,13 +101,20 @@ var MessageBridgeService = /** @class */ (function () {
             .withAutomaticReconnect()
             .build();
         this.connection.on("ReceiveMessage", function (messageString) {
+            var messageDto;
             try {
-                var messageDto = typeof messageString === "string" ? JSON.parse(messageString) : messageString;
-                _this.handleIncomingMessage(messageDto);
+                messageDto = typeof messageString === "string" ? JSON.parse(messageString) : messageString;
             }
             catch (e) {
                 _this.bridgeErrors.push(e);
                 console.log("Incorrect message received: " + messageString);
+                return;
+            }
+            try {
+                _this.handleIncomingMessage(messageDto);
+            }
+            catch (e) {
+                console.log("Error in response handle for message: " + e);
             }
         });
         return this.connection
