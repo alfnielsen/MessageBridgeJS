@@ -1,6 +1,7 @@
 import * as signalR from "@microsoft/signalr";
 import { Message } from "./Message";
 import { IMessageServiceQuerySubscription, MessageDirection, SubscribeResponse, SubscribeResponseWithCatch } from "./MessageBridgeInterfaces";
+import { IHttpConnectionOptions } from "@microsoft/signalr/src/IHttpConnectionOptions";
 export declare class MessageBridgeService {
     wsUri: string;
     connected: boolean;
@@ -41,7 +42,7 @@ export declare class MessageBridgeService {
     }): Message<TPayload, any, any>;
     subscribeQuery<TPayload = any, TResponse = any>(opt: IMessageServiceQuerySubscription<TPayload, TResponse>): () => void;
     onError(err: string): void;
-    connect(): Promise<void>;
+    connect(options?: IHttpConnectionOptions): Promise<void>;
     protected handleIncomingMessage(messageDto: Message): void;
     protected receiveEventMessage(eventMsg: Message): void;
     protected internalSendMessage(msg: Message): void;

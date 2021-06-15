@@ -1,5 +1,9 @@
 
 
+## 0.0.5
+
+Add **options?: IHttpConnectionOptions** on **connect** method
+
 ## 0.0.2
 
 Add cdn build (for direct use in a browser)

@@ -1,6 +1,6 @@
 {
   "name": "message-bridge-js",
-  "version": "0.0.4",
+  "version": "0.0.7",
   "homepage": "https://github.com/alfnielsen/MessageBridgeJS",
   "repository": {
     "type": "git",
@@ -26,6 +26,8 @@
     "typescript": "^4.2.3"
   },
   "scripts": {
-    "test": "yarn jest"
+    "test": "yarn jest",
+    "build": "tsc",
+    "publish": "npm publish"
   }
 }

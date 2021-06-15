@@ -7,6 +7,7 @@ import {
   SubscribeResponse,
   SubscribeResponseWithCatch
 } from "./MessageBridgeInterfaces";
+import {IHttpConnectionOptions} from "@microsoft/signalr/src/IHttpConnectionOptions";
 
 
 
@@ -165,14 +166,14 @@ export class MessageBridgeService {
   // can to overwritten by consumer!
   onError(err: string) {}
 
-  connect() {
+  connect(options: IHttpConnectionOptions = {}) {
     this.connection = new signalR.HubConnectionBuilder()
-      .withUrl(this.wsUri)
+      .withUrl(this.wsUri, options)
       .withAutomaticReconnect()
       .build()
-    this.connection.on("ReceiveMessage", (messageString: string) => {
+    this.connection.on("ReceiveMessage", (messageString: string | Message) => {
       try {
-        const messageDto = JSON.parse(messageString) as Message;
+        const messageDto = typeof messageString === "string" ? JSON.parse(messageString) as Message : messageString;
         this.handleIncomingMessage(messageDto)  
       }catch(e){
         this.bridgeErrors.push(e)

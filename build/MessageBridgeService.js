@@ -93,15 +93,16 @@ var MessageBridgeService = /** @class */ (function () {
     };
     // can to overwritten by consumer!
     MessageBridgeService.prototype.onError = function (err) { };
-    MessageBridgeService.prototype.connect = function () {
+    MessageBridgeService.prototype.connect = function (options) {
         var _this = this;
+        if (options === void 0) { options = {}; }
         this.connection = new signalR.HubConnectionBuilder()
-            .withUrl(this.wsUri)
+            .withUrl(this.wsUri, options)
             .withAutomaticReconnect()
             .build();
         this.connection.on("ReceiveMessage", function (messageString) {
             try {
-                var messageDto = JSON.parse(messageString);
+                var messageDto = typeof messageString === "string" ? JSON.parse(messageString) : messageString;
                 _this.handleIncomingMessage(messageDto);
             }
             catch (e) {
