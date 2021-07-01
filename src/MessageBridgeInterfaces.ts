@@ -21,6 +21,7 @@ export interface IMessageServiceQuerySubscription<TQuery, TResponse> {
   query: TQuery
   triggers: string[]
   onUpdate: SubscribeResponse<TResponse>
+  onError?: SubscribeResponse<any>
 }
 
 

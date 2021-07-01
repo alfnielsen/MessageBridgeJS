@@ -81,6 +81,7 @@ var MessageBridgeService = /** @class */ (function () {
             name: opt.name,
             payload: opt.query,
             onSuccess: opt.onUpdate,
+            onError: opt.onError
         });
         //then subscribe
         this.subscriptionQuery.push(opt);
@@ -152,7 +153,7 @@ var MessageBridgeService = /** @class */ (function () {
             .filter(function (x) { var _a, _b; return (_b = (_a = x.triggers) === null || _a === void 0 ? void 0 : _a.some(function (x) { return x === eventMsg.name; })) !== null && _b !== void 0 ? _b : false; })
             .forEach(function (x) {
             var msg = _this.createQueryMessage(x.name, x.query);
-            _this.sendMessage(msg, x.onUpdate);
+            _this.sendMessage(msg, x.onUpdate, x.onError);
         });
     };
     MessageBridgeService.prototype.internalSendMessage = function (msg) {

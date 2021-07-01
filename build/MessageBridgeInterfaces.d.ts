@@ -17,6 +17,7 @@ export interface IMessageServiceQuerySubscription<TQuery, TResponse> {
     query: TQuery;
     triggers: string[];
     onUpdate: SubscribeResponse<TResponse>;
+    onError?: SubscribeResponse<any>;
 }
 export declare enum MessageDirection {
     ToClient = "ToClient",

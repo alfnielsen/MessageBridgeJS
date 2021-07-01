@@ -151,9 +151,12 @@ export class MessageBridgeService {
       name: opt.name,
       payload: opt.query,
       onSuccess: opt.onUpdate,
+      onError: opt.onError
     })
     //then subscribe
     this.subscriptionQuery.push(opt)
+
+
 
     return /*unsubscribe*/ () => {
       const index = this.subscriptionQuery.findIndex((x) => x === opt)
@@ -219,7 +222,7 @@ export class MessageBridgeService {
       .filter((x) => x.triggers?.some((x) => x === eventMsg.name) ?? false)
       .forEach((x) => {
         const msg = this.createQueryMessage(x.name, x.query)
-        this.sendMessage(msg, x.onUpdate)
+        this.sendMessage(msg, x.onUpdate, x.onError)
       })
   }
 

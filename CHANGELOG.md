@@ -1,4 +1,7 @@
 
+## 0.0.10
+
+Add **onError** on subscribeQuery
 
 ## 0.0.5
 
