@@ -63,6 +63,11 @@ export abstract class MessageBridgeServiceBase {
     this.internalSendMessage(msg);
   }
 
+  protected internalSendMessage(msg: Message) {
+    this.history.push(msg);
+    this.sendNetworkMessage(msg);
+  }
+
   subscribeEvent<TResponse = any>({
     name,
     onEvent,
@@ -217,10 +222,5 @@ export abstract class MessageBridgeServiceBase {
         const msg = this.createQueryMessage(x.name, x.query);
         this.sendMessage(msg, x.onUpdate, x.onError);
       });
-  }
-
-  protected internalSendMessage(msg: Message) {
-    this.history.push(msg);
-    this.sendMessage(msg);
   }
 }
