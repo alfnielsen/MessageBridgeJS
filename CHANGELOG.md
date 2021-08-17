@@ -1,4 +1,4 @@
-## 0.1.1
+## 0.1.3
 
 Split into a base class `MessageBridgeServiceBase` an different network implementations.
 

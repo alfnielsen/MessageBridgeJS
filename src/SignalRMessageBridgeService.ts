@@ -14,7 +14,14 @@ export class SignalRMessageBridgeService extends MessageBridgeServiceBase {
     this.connection.on("ReceiveMessage", (messageString: string | Message) => {
       this.onMessage(messageString);
     });
-    return this.connection.start();
+    return this.connection
+      .start()
+      .then(() => {
+        this.connected = true;
+      })
+      .catch((err: Error) => {
+        this.onError(err);
+      });
   }
 
   sendNetworkMessage(msg: Message) {

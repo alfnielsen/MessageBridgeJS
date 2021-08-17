@@ -15,6 +15,7 @@ export class WebsocketMessageBridgeService extends MessageBridgeServiceBase {
     return new Promise<void>((resolve, reject) => {
       // Connection opened
       this.socket?.addEventListener("open", (event) => {
+        this.connected = true;
         resolve();
       });
     });
