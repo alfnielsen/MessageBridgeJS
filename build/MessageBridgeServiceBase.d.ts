@@ -19,6 +19,7 @@ export declare abstract class MessageBridgeServiceBase {
     history: Message[];
     bridgeErrors: (Error | string)[];
     sendMessage<TPayload = any, TResponse = any, TSchema = any>(msg: Message<TPayload, TResponse, TSchema>, onSuccess?: SubscribeResponse<TResponse>, onError?: SubscribeResponse<any>): void;
+    protected internalSendMessage(msg: Message): void;
     subscribeEvent<TResponse = any>({ name, onEvent, }: {
         name: string;
         onEvent: SubscribeResponse<TResponse>;
@@ -46,6 +47,5 @@ export declare abstract class MessageBridgeServiceBase {
     onError(err: Error): void;
     handleIncomingMessage(msg: Message): void;
     protected receiveEventMessage(eventMsg: Message): void;
-    protected internalSendMessage(msg: Message): void;
 }
 //# sourceMappingURL=MessageBridgeServiceBase.d.ts.map

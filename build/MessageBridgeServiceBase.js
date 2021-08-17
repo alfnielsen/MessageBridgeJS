@@ -38,6 +38,10 @@ var MessageBridgeServiceBase = /** @class */ (function () {
         }
         this.internalSendMessage(msg);
     };
+    MessageBridgeServiceBase.prototype.internalSendMessage = function (msg) {
+        this.history.push(msg);
+        this.sendNetworkMessage(msg);
+    };
     MessageBridgeServiceBase.prototype.subscribeEvent = function (_a) {
         var _this = this;
         var name = _a.name, onEvent = _a.onEvent;
@@ -145,10 +149,6 @@ var MessageBridgeServiceBase = /** @class */ (function () {
             var msg = _this.createQueryMessage(x.name, x.query);
             _this.sendMessage(msg, x.onUpdate, x.onError);
         });
-    };
-    MessageBridgeServiceBase.prototype.internalSendMessage = function (msg) {
-        this.history.push(msg);
-        this.sendMessage(msg);
     };
     return MessageBridgeServiceBase;
 }());
