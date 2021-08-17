@@ -2,7 +2,6 @@ import { Message } from "./Message";
 import { MessageBridgeServiceBase } from "./MessageBridgeServiceBase";
 
 export class WebsocketMessageBridgeService extends MessageBridgeServiceBase {
-  wsUri: string = "";
   socket?: WebSocket;
   connectedCallback?: () => void;
 

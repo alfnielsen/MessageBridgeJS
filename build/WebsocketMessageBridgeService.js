@@ -17,9 +17,7 @@ import { MessageBridgeServiceBase } from "./MessageBridgeServiceBase";
 var WebsocketMessageBridgeService = /** @class */ (function (_super) {
     __extends(WebsocketMessageBridgeService, _super);
     function WebsocketMessageBridgeService() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
-        _this.wsUri = "";
-        return _this;
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     WebsocketMessageBridgeService.prototype.connect = function () {
         var _this = this;

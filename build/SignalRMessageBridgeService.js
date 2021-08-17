@@ -18,9 +18,7 @@ import { MessageBridgeServiceBase } from "./MessageBridgeServiceBase";
 var SignalRMessageBridgeService = /** @class */ (function (_super) {
     __extends(SignalRMessageBridgeService, _super);
     function SignalRMessageBridgeService() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
-        _this.wsUri = "";
-        return _this;
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     SignalRMessageBridgeService.prototype.connect = function (options) {
         var _this = this;

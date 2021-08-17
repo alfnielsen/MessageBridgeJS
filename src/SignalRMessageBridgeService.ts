@@ -4,7 +4,6 @@ import { IHttpConnectionOptions } from "@microsoft/signalr/src/IHttpConnectionOp
 import { MessageBridgeServiceBase } from "./MessageBridgeServiceBase";
 
 export class SignalRMessageBridgeService extends MessageBridgeServiceBase {
-  wsUri: string = "";
   connection?: signalR.HubConnection;
 
   connect(options: IHttpConnectionOptions = {}): Promise<void> {
