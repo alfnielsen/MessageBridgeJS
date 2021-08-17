@@ -1,1 +1,1 @@
-{"version":3,"file":"MessageBridgeService.js","sourceRoot":"","sources":["../src/MessageBridgeService.ts"],"names":[],"mappings":";;;;;;;;;;;;;;;AAAA,OAAO,EAAE,2BAA2B,EAAE,MAAM,+BAA+B,CAAC;AAE5E;IAA0C,wCAA2B;IAArE;;IAAuE,CAAC;IAAD,2BAAC;AAAD,CAAC,AAAxE,CAA0C,2BAA2B,GAAG"}
+{"version":3,"file":"MessageBridgeService.js","sourceRoot":"","sources":["../src/MessageBridgeService.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,2BAA2B,IAAI,oBAAoB,EAAE,MAAM,+BAA+B,CAAC;AACpG,OAAO,EAAE,6BAA6B,EAAE,MAAM,iCAAiC,CAAC"}

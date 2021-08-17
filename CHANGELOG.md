@@ -1,4 +1,4 @@
-## 0.1.0
+## 0.1.1
 
 Split into a base class `MessageBridgeServiceBase` an different network implementations.
 
@@ -7,7 +7,7 @@ There are now two network implementations:
 - SignalRMessageBridgeService (MessageBridgeService)
 - WebSocketConnectionService
 
-The `MessageBridgeService` now extends SignalRMessageBridgeService - `So no real changes except the onError`
+The exprted `MessageBridgeService` is the SignalRMessageBridgeService - `So no real changes except the onError`
 
 ### Breaking changes
 

@@ -1,4 +1,3 @@
-import { SignalRMessageBridgeService } from "./SignalRMessageBridgeService";
-export declare class MessageBridgeService extends SignalRMessageBridgeService {
-}
+export { SignalRMessageBridgeService as MessageBridgeService } from "./SignalRMessageBridgeService";
+export { WebsocketMessageBridgeService } from "./WebsocketMessageBridgeService";
 //# sourceMappingURL=MessageBridgeService.d.ts.map

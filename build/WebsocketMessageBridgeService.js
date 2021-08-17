@@ -44,4 +44,4 @@ var WebsocketMessageBridgeService = /** @class */ (function (_super) {
     return WebsocketMessageBridgeService;
 }(MessageBridgeServiceBase));
 export { WebsocketMessageBridgeService };
-//# sourceMappingURL=WebSocketConnectionService.js.map
+//# sourceMappingURL=WebsocketMessageBridgeService.js.map

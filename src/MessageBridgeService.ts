@@ -1,3 +1,2 @@
-import { SignalRMessageBridgeService } from "./SignalRMessageBridgeService";
-
-export class MessageBridgeService extends SignalRMessageBridgeService {}
+export { SignalRMessageBridgeService as MessageBridgeService } from "./SignalRMessageBridgeService";
+export { WebsocketMessageBridgeService } from "./WebsocketMessageBridgeService";

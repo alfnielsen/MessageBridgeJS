@@ -7,4 +7,4 @@ export declare class WebsocketMessageBridgeService extends MessageBridgeServiceB
     connect(): Promise<void>;
     sendNetworkMessage(msg: Message): void;
 }
-//# sourceMappingURL=WebSocketConnectionService.d.ts.map
+//# sourceMappingURL=WebsocketMessageBridgeService.d.ts.map
