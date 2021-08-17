@@ -2,11 +2,13 @@ import * as signalR from "@microsoft/signalr";
 import { Message } from "./Message";
 import { IMessageServiceQuerySubscription, MessageDirection, SubscribeResponse, SubscribeResponseWithCatch } from "./MessageBridgeInterfaces";
 import { IHttpConnectionOptions } from "@microsoft/signalr/src/IHttpConnectionOptions";
+import { ConnectionService } from "./ConnectionService";
 export declare class MessageBridgeService {
     wsUri: string;
+    connectionService?: ConnectionService | undefined;
     connected: boolean;
     connection?: signalR.HubConnection;
-    constructor(wsUri: string);
+    constructor(wsUri: string, connectionService?: ConnectionService | undefined);
     protected subscriptionTrackIdList: {
         [trackId: string]: SubscribeResponseWithCatch<any>;
     };
@@ -36,14 +38,14 @@ export declare class MessageBridgeService {
         onSuccess?: SubscribeResponse<TResponse>;
         onError?: SubscribeResponse<any>;
     }): Message<TPayload, any, any>;
-    sendEvent<TPayload = any, TResponse = any, TSchema = any>({ name, payload }: {
+    sendEvent<TPayload = any, TResponse = any, TSchema = any>({ name, payload, }: {
         name: string;
         payload: TPayload;
     }): Message<TPayload, any, any>;
     subscribeQuery<TPayload = any, TResponse = any>(opt: IMessageServiceQuerySubscription<TPayload, TResponse>): () => void;
-    onError(err: string): void;
-    connect(options?: IHttpConnectionOptions): Promise<void>;
-    protected handleIncomingMessage(messageDto: Message): void;
+    onError(err: Error): void;
+    connect(options?: IHttpConnectionOptions): Promise<void> | undefined;
+    handleIncomingMessage(msg: Message): void;
     protected receiveEventMessage(eventMsg: Message): void;
     protected internalSendMessage(msg: Message): void;
 }

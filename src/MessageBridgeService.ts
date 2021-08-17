@@ -1,63 +1,71 @@
-import * as signalR from "@microsoft/signalr"
-import { Message } from "./Message"
+import * as signalR from "@microsoft/signalr";
+import { Message } from "./Message";
 import {
   IMessageServiceQuerySubscription,
   MessageDirection,
   MessageType,
   SubscribeResponse,
-  SubscribeResponseWithCatch
+  SubscribeResponseWithCatch,
 } from "./MessageBridgeInterfaces";
-import {IHttpConnectionOptions} from "@microsoft/signalr/src/IHttpConnectionOptions";
-
-
+import { IHttpConnectionOptions } from "@microsoft/signalr/src/IHttpConnectionOptions";
+import { SignalRConnectionService } from "./SignalRConnectionService";
+import { ConnectionService } from "./ConnectionService";
 
 export class MessageBridgeService {
-  connected = false
-  connection?: signalR.HubConnection
+  connected = false;
+  connection?: signalR.HubConnection;
 
-  constructor(public wsUri: string) {}
+  constructor(
+    public wsUri: string,
+    public connectionService?: ConnectionService
+  ) {
+    if (connectionService === undefined) {
+      this.connectionService = new SignalRConnectionService(this);
+    }
+  }
 
   protected subscriptionTrackIdList: {
-    [trackId: string]: SubscribeResponseWithCatch<any>
-  } = {}
+    [trackId: string]: SubscribeResponseWithCatch<any>;
+  } = {};
 
   protected subscriptionEventList: {
-    [eventName: string]: SubscribeResponse<any>[]
-  } = {}
+    [eventName: string]: SubscribeResponse<any>[];
+  } = {};
 
-  protected subscriptionQuery: IMessageServiceQuerySubscription<any, any>[] = []
+  protected subscriptionQuery: IMessageServiceQuerySubscription<any, any>[] =
+    [];
 
-  history: Message[] = []
-  bridgeErrors: (Error|string)[] = []
-
+  history: Message[] = [];
+  bridgeErrors: (Error | string)[] = [];
 
   sendMessage<TPayload = any, TResponse = any, TSchema = any>(
     msg: Message<TPayload, TResponse, TSchema>,
     onSuccess?: SubscribeResponse<TResponse>,
-    onError?: SubscribeResponse<any>,
+    onError?: SubscribeResponse<any>
   ) {
-    msg.direction = MessageDirection.ToServer
+    msg.direction = MessageDirection.ToServer;
     if (onSuccess || onError) {
-      this.subscriptionTrackIdList[msg.trackId] = { onSuccess, onError}
+      this.subscriptionTrackIdList[msg.trackId] = { onSuccess, onError };
     }
-    this.internalSendMessage(msg)
+    this.internalSendMessage(msg);
   }
 
   subscribeEvent<TResponse = any>({
     name,
     onEvent,
   }: {
-    name: string
-    onEvent: SubscribeResponse<TResponse>
+    name: string;
+    onEvent: SubscribeResponse<TResponse>;
   }) {
-    if (!this.subscriptionEventList[name]) this.subscriptionEventList[name] = []
-    this.subscriptionEventList[name].push(onEvent)
+    if (!this.subscriptionEventList[name])
+      this.subscriptionEventList[name] = [];
+    this.subscriptionEventList[name].push(onEvent);
     return () => {
       const index = this.subscriptionEventList[name].findIndex(
         (x) => x === onEvent
-      )
-      this.subscriptionEventList[name].splice(index, 1)
-    }
+      );
+      this.subscriptionEventList[name].splice(index, 1);
+    };
   }
 
   createCommandMessage<TPayload = any, TResponse = any, TSchema = any>(
@@ -70,9 +78,9 @@ export class MessageBridgeService {
       type: MessageType.Command,
       payload,
       direction,
-    })
+    });
   }
-  
+
   createQueryMessage<TPayload = any>(
     name: string,
     payload: TPayload,
@@ -83,7 +91,7 @@ export class MessageBridgeService {
       type: MessageType.Query,
       payload,
       direction,
-    })
+    });
   }
 
   createEventMessage<TPayload = any>(
@@ -96,7 +104,7 @@ export class MessageBridgeService {
       type: MessageType.Event,
       payload,
       direction,
-    })
+    });
   }
 
   sendCommand<TPayload = any, TResponse = any, TSchema = any>({
@@ -105,13 +113,13 @@ export class MessageBridgeService {
     onSuccess,
     onError,
   }: {
-    name: string
-    payload: TPayload
-    onSuccess?: SubscribeResponse<TResponse>
-    onError?: SubscribeResponse<any>
+    name: string;
+    payload: TPayload;
+    onSuccess?: SubscribeResponse<TResponse>;
+    onError?: SubscribeResponse<any>;
   }) {
-    const msg = this.createCommandMessage(name, payload)
-    this.sendMessage<TPayload, TResponse, TSchema>(msg, onSuccess, onError)
+    const msg = this.createCommandMessage(name, payload);
+    this.sendMessage<TPayload, TResponse, TSchema>(msg, onSuccess, onError);
     return msg;
   }
 
@@ -121,25 +129,25 @@ export class MessageBridgeService {
     onSuccess,
     onError,
   }: {
-    name: string
-    payload: TPayload
-    onSuccess?: SubscribeResponse<TResponse>
-    onError?: SubscribeResponse<any>
+    name: string;
+    payload: TPayload;
+    onSuccess?: SubscribeResponse<TResponse>;
+    onError?: SubscribeResponse<any>;
   }) {
-    const msg = this.createQueryMessage(name, payload)
-    this.sendMessage<TPayload, TResponse, TSchema>(msg, onSuccess, onError)
+    const msg = this.createQueryMessage(name, payload);
+    this.sendMessage<TPayload, TResponse, TSchema>(msg, onSuccess, onError);
     return msg;
   }
 
   sendEvent<TPayload = any, TResponse = any, TSchema = any>({
     name,
-    payload
+    payload,
   }: {
-    name: string
-    payload: TPayload
+    name: string;
+    payload: TPayload;
   }) {
-    const msg = this.createEventMessage(name, payload)
-    this.sendMessage<TPayload, TResponse, TSchema>(msg)
+    const msg = this.createEventMessage(name, payload);
+    this.sendMessage<TPayload, TResponse, TSchema>(msg);
     return msg;
   }
 
@@ -151,87 +159,59 @@ export class MessageBridgeService {
       name: opt.name,
       payload: opt.query,
       onSuccess: opt.onUpdate,
-      onError: opt.onError
-    })
+      onError: opt.onError,
+    });
     //then subscribe
-    this.subscriptionQuery.push(opt)
-
-
+    this.subscriptionQuery.push(opt);
 
     return /*unsubscribe*/ () => {
-      const index = this.subscriptionQuery.findIndex((x) => x === opt)
+      const index = this.subscriptionQuery.findIndex((x) => x === opt);
       if (index > 0) {
-        this.subscriptionQuery.splice(index, 1)
+        this.subscriptionQuery.splice(index, 1);
       }
-    }
+    };
   }
 
-  // can to overwritten by consumer!
-  onError(err: string) {}
+  // can be overwritten by consumer!
+  onError(err: Error) {
+    this.bridgeErrors.push(err);
+  }
 
   connect(options: IHttpConnectionOptions = {}) {
-    this.connection = new signalR.HubConnectionBuilder()
-      .withUrl(this.wsUri, options)
-      .withAutomaticReconnect()
-      .build()
-    this.connection.on("ReceiveMessage", (messageString: string | Message) => {
-      let messageDto: Message
-      try {
-        messageDto = typeof messageString === "string" ? JSON.parse(messageString) as Message : messageString;
-      }catch(e){
-        this.bridgeErrors.push(e)
-        console.log("Incorrect message received: " + messageString);
-        return
-      }
-      try {
-        this.handleIncomingMessage(messageDto)
-      }catch(e){
-        console.log("Error in response handle for message: " + e);
-      }
-    })
-    return this.connection
-      .start()
-      .then(() => {
-        this.connected = true
-      })
-      .catch((err: Error) => {
-        this.onError(err.toString())
-      })
+    return this.connectionService?.connect(options);
   }
 
-  protected handleIncomingMessage(messageDto: Message) {
-    const msg = Message.fromDto(messageDto)
-    this.history.push(msg)
+  handleIncomingMessage(msg: Message) {
+    this.history.push(msg);
     if (this.subscriptionTrackIdList[msg.trackId]) {
-      if(msg.type === MessageType.Error){
-        this.subscriptionTrackIdList[msg.trackId].onError?.(msg.payload, msg)
-      }else{
-        this.subscriptionTrackIdList[msg.trackId].onSuccess?.(msg.payload, msg)
+      if (msg.type === MessageType.Error) {
+        this.subscriptionTrackIdList[msg.trackId].onError?.(msg.payload, msg);
+      } else {
+        this.subscriptionTrackIdList[msg.trackId].onSuccess?.(msg.payload, msg);
       }
-      delete this.subscriptionTrackIdList[msg.trackId]
+      delete this.subscriptionTrackIdList[msg.trackId];
     }
     if (msg.type === MessageType.Event) {
-      this.receiveEventMessage(msg)
+      this.receiveEventMessage(msg);
     }
   }
+
   protected receiveEventMessage(eventMsg: Message) {
     if (this.subscriptionEventList[eventMsg.name]) {
-      this.subscriptionEventList[eventMsg.name].forEach((callback) => callback(eventMsg.payload, eventMsg))
+      this.subscriptionEventList[eventMsg.name].forEach((callback) =>
+        callback(eventMsg.payload, eventMsg)
+      );
     }
     this.subscriptionQuery
       .filter((x) => x.triggers?.some((x) => x === eventMsg.name) ?? false)
       .forEach((x) => {
-        const msg = this.createQueryMessage(x.name, x.query)
-        this.sendMessage(msg, x.onUpdate, x.onError)
-      })
+        const msg = this.createQueryMessage(x.name, x.query);
+        this.sendMessage(msg, x.onUpdate, x.onError);
+      });
   }
 
   protected internalSendMessage(msg: Message) {
-    this.history.push(msg)
-    const msgJson = JSON.stringify(msg)
-    this.connection?.invoke("SendMessage", msgJson).catch((err) => {
-      this.bridgeErrors.push(err)
-      return console.error(err.toString())
-    })
+    this.history.push(msg);
+    this.connectionService?.sendMessage(msg);
   }
 }
