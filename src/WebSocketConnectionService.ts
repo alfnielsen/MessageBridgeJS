@@ -1,12 +1,12 @@
 import { Message } from "./Message";
-import { ConnectionService } from "./ConnectionService";
+import { MessageBridgeServiceBase } from "./MessageBridgeServiceBase";
 
-export class MessageBridgeServiceMock extends ConnectionService {
+export class WebsocketMessageBridgeService extends MessageBridgeServiceBase {
   wsUri: string = "";
   socket?: WebSocket;
   connectedCallback?: () => void;
 
-  connect(url: string) {
+  connect() {
     this.socket = new WebSocket(this.wsUri);
     this.socket.addEventListener("message", (event) => {
       const messageString: string | Message = event.data;
@@ -21,7 +21,7 @@ export class MessageBridgeServiceMock extends ConnectionService {
     });
   }
 
-  sendMessage(msg: Message) {
+  sendNetworkMessage(msg: Message) {
     const msgJson = JSON.stringify(msg);
     this.socket?.send(msgJson);
   }

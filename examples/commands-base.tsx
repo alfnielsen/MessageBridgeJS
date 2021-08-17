@@ -1,9 +1,17 @@
-//import React, { useEffect, useState } from "react"
-import { Message } from "../src/Message"
-import { MessageBridgeService } from "../src/MessageBridgeService"
+// import React, { useEffect, useState } from "react"
+import { Message } from "../src/Message";
+import { MessageBridgeService } from "../src/MessageBridgeService";
+// import { SignalRMessageBridgeService } from "../src/SignalRMessageBridgeService"
+// import { WebSocketConnectionService } from "../src/WebSocketConnectionService"
 
-const msgBridge = new MessageBridgeService("ws:/localhost:8080")
-/*await*/ msgBridge.connect()
+// # MessageBridgeService is a SignalRMessageBridgeService!
+const msgBridge = new MessageBridgeService("ws:/localhost:8080");
+// # You can also use it directly
+// const msgBridge = new SignalRMessageBridgeService("ws:/localhost:8080")
+// #Or use the ("sinple") Websocket version
+// const msgBridge = new WebSocketConnectionService("ws:/localhost:8080")
+
+/*await*/ msgBridge.connect(); // await to connect
 
 /**
  * React hook
@@ -21,7 +29,7 @@ function useQuery<TQuery, TResponse>(
   triggers: string[]
 ): TResponse | undefined {
   //@ts-ignore
-  const [state, setState] = useState<TResponse | undefined>()
+  const [state, setState] = useState<TResponse | undefined>();
   //@ts-ignore
   useEffect(() => {
     const unsubscribe = msgBridge.subscribeQuery<TQuery, TResponse>({
@@ -29,17 +37,17 @@ function useQuery<TQuery, TResponse>(
       query,
       triggers,
       onUpdate: (item, msg) => {
-        setState(item)
+        setState(item);
       },
-    })
-    return () => unsubscribe()
-  }, [name, query, triggers])
-  return state
+    });
+    return () => unsubscribe();
+  }, [name, query, triggers]);
+  return state;
 }
 
 export interface ICreateTodoItem {
-  listId: number
-  title: string
+  listId: number;
+  title: string;
 }
 export const CreateTodoItem = (command: ICreateTodoItem) => {
   return new Promise((resolve, reject) => {
@@ -47,52 +55,52 @@ export const CreateTodoItem = (command: ICreateTodoItem) => {
       name: "CreateTodoItem",
       payload: command,
       onSuccess: (id: number, msg) => {
-        resolve(id)
+        resolve(id);
       },
       onError: (error, msg) => {
-        reject(error)
+        reject(error);
       },
-    })
-  })
-}
+    });
+  });
+};
 
-CreateTodoItem({ listId: 1, title: "ss" }).then((id) => {})
+CreateTodoItem({ listId: 1, title: "ss" }).then((id) => {});
 
 export interface IDeleteTodoItem {
-  id: number
+  id: number;
 }
 export const DeleteTodoItem = (command: IDeleteTodoItem) => {
-  msgBridge.sendCommand({ name: "DeleteTodoItem", payload: command })
-}
+  msgBridge.sendCommand({ name: "DeleteTodoItem", payload: command });
+};
 
 export interface IUpdateTodoItem {
-  id: number
-  title: string
-  done: boolean
+  id: number;
+  title: string;
+  done: boolean;
 }
 
 export interface IGetTodoItemsWithPagination {
-  listId: number
-  pageNumber: number
-  pageSize: number
-  done: boolean
+  listId: number;
+  pageNumber: number;
+  pageSize: number;
+  done: boolean;
 }
 
 interface ITodoItem {
-  title: string
-  id: number
-  done: boolean
+  title: string;
+  id: number;
+  done: boolean;
 }
 interface IGetTodoItem {
-  id: number
+  id: number;
 }
 
 const useGetTodo = (id: number, triggers: string[]) =>
-  useQuery<IGetTodoItem, ITodoItem>("GetTodo", { id }, triggers)
+  useQuery<IGetTodoItem, ITodoItem>("GetTodo", { id }, triggers);
 
 export const functionalComponent = () => {
-  var todoItem = useGetTodo(1, ["UpdateTodoItem"])
-  var todoItem = useGetTodo(1, ["UpdateTodoItem"])
+  var todoItem = useGetTodo(1, ["UpdateTodoItem"]);
+  var todoItem = useGetTodo(1, ["UpdateTodoItem"]);
   //@ts-ignore
-  return <div>{todoItem?.id}</div>
-}
+  return <div>{todoItem?.id}</div>;
+};

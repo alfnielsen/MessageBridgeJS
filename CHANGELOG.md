@@ -1,14 +1,13 @@
 ## 0.1.0
 
-Add 'ConnectionService' for differnet underlaying connection models.
+Split into a base class `MessageBridgeServiceBase` an different network implementations.
 
-Default is still SignalR (SignelRConnectionService), but a "simple" WebsocketConnectionService has been added.
+There are now two network implementations:
 
-The MessageBridgeService contructor now take an optional second argument of type ConnectionService.
+- SignalRMessageBridgeService (MessageBridgeService)
+- WebSocketConnectionService
 
-If not set, it will create an SignelRConnectionService that wotk the same way as previous.
-
-A ConnectionService has one constructor argument whioch is the MessageService, and will use its porperties/methods: wsUrl, onError and handleIncommingMessage.
+The `MessageBridgeService` now extends SignalRMessageBridgeService - `So no real changes except the onError`
 
 ### Breaking changes
 

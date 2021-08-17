@@ -1,10 +1,10 @@
 import { Message } from "./Message";
-import { ConnectionService } from "./ConnectionService";
-export declare class MessageBridgeServiceMock extends ConnectionService {
+import { MessageBridgeServiceBase } from "./MessageBridgeServiceBase";
+export declare class WebsocketMessageBridgeService extends MessageBridgeServiceBase {
     wsUri: string;
     socket?: WebSocket;
     connectedCallback?: () => void;
-    connect(url: string): Promise<void>;
-    sendMessage(msg: Message): void;
+    connect(): Promise<void>;
+    sendNetworkMessage(msg: Message): void;
 }
 //# sourceMappingURL=WebSocketConnectionService.d.ts.map

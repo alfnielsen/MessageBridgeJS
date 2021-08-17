@@ -1,9 +1,9 @@
 import * as signalR from "@microsoft/signalr";
 import { Message } from "./Message";
-import { ConnectionService } from "./ConnectionService";
 import { IHttpConnectionOptions } from "@microsoft/signalr/src/IHttpConnectionOptions";
+import { MessageBridgeServiceBase } from "./MessageBridgeServiceBase";
 
-export class SignalRConnectionService extends ConnectionService {
+export class SignalRMessageBridgeService extends MessageBridgeServiceBase {
   wsUri: string = "";
   connection?: signalR.HubConnection;
 
@@ -18,10 +18,10 @@ export class SignalRConnectionService extends ConnectionService {
     return this.connection.start();
   }
 
-  sendMessage(msg: Message) {
+  sendNetworkMessage(msg: Message) {
     const msgJson = JSON.stringify(msg);
     this.connection?.invoke("SendMessage", msgJson).catch((err) => {
-      this.messageBridgeService.onError(err as Error);
+      this.onError(err as Error);
       return console.error(err.toString());
     });
   }

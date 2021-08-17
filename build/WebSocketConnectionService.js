@@ -13,15 +13,15 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-import { ConnectionService } from "./ConnectionService";
-var MessageBridgeServiceMock = /** @class */ (function (_super) {
-    __extends(MessageBridgeServiceMock, _super);
-    function MessageBridgeServiceMock() {
+import { MessageBridgeServiceBase } from "./MessageBridgeServiceBase";
+var WebsocketMessageBridgeService = /** @class */ (function (_super) {
+    __extends(WebsocketMessageBridgeService, _super);
+    function WebsocketMessageBridgeService() {
         var _this = _super !== null && _super.apply(this, arguments) || this;
         _this.wsUri = "";
         return _this;
     }
-    MessageBridgeServiceMock.prototype.connect = function (url) {
+    WebsocketMessageBridgeService.prototype.connect = function () {
         var _this = this;
         this.socket = new WebSocket(this.wsUri);
         this.socket.addEventListener("message", function (event) {
@@ -36,12 +36,12 @@ var MessageBridgeServiceMock = /** @class */ (function (_super) {
             });
         });
     };
-    MessageBridgeServiceMock.prototype.sendMessage = function (msg) {
+    WebsocketMessageBridgeService.prototype.sendNetworkMessage = function (msg) {
         var _a;
         var msgJson = JSON.stringify(msg);
         (_a = this.socket) === null || _a === void 0 ? void 0 : _a.send(msgJson);
     };
-    return MessageBridgeServiceMock;
-}(ConnectionService));
-export { MessageBridgeServiceMock };
+    return WebsocketMessageBridgeService;
+}(MessageBridgeServiceBase));
+export { WebsocketMessageBridgeService };
 //# sourceMappingURL=WebSocketConnectionService.js.map

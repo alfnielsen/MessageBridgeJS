@@ -14,15 +14,15 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 import * as signalR from "@microsoft/signalr";
-import { ConnectionService } from "./ConnectionService";
-var SignalRConnectionService = /** @class */ (function (_super) {
-    __extends(SignalRConnectionService, _super);
-    function SignalRConnectionService() {
+import { MessageBridgeServiceBase } from "./MessageBridgeServiceBase";
+var SignalRMessageBridgeService = /** @class */ (function (_super) {
+    __extends(SignalRMessageBridgeService, _super);
+    function SignalRMessageBridgeService() {
         var _this = _super !== null && _super.apply(this, arguments) || this;
         _this.wsUri = "";
         return _this;
     }
-    SignalRConnectionService.prototype.connect = function (options) {
+    SignalRMessageBridgeService.prototype.connect = function (options) {
         var _this = this;
         if (options === void 0) { options = {}; }
         this.connection = new signalR.HubConnectionBuilder()
@@ -34,16 +34,16 @@ var SignalRConnectionService = /** @class */ (function (_super) {
         });
         return this.connection.start();
     };
-    SignalRConnectionService.prototype.sendMessage = function (msg) {
+    SignalRMessageBridgeService.prototype.sendNetworkMessage = function (msg) {
         var _this = this;
         var _a;
         var msgJson = JSON.stringify(msg);
         (_a = this.connection) === null || _a === void 0 ? void 0 : _a.invoke("SendMessage", msgJson).catch(function (err) {
-            _this.messageBridgeService.onError(err);
+            _this.onError(err);
             return console.error(err.toString());
         });
     };
-    return SignalRConnectionService;
-}(ConnectionService));
-export { SignalRConnectionService };
-//# sourceMappingURL=SignalRConnectionService.js.map
+    return SignalRMessageBridgeService;
+}(MessageBridgeServiceBase));
+export { SignalRMessageBridgeService };
+//# sourceMappingURL=SignalRMessageBridgeService.js.map

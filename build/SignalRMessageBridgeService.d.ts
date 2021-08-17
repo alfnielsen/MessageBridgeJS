@@ -1,11 +1,11 @@
 import * as signalR from "@microsoft/signalr";
 import { Message } from "./Message";
-import { ConnectionService } from "./ConnectionService";
 import { IHttpConnectionOptions } from "@microsoft/signalr/src/IHttpConnectionOptions";
-export declare class SignalRConnectionService extends ConnectionService {
+import { MessageBridgeServiceBase } from "./MessageBridgeServiceBase";
+export declare class SignalRMessageBridgeService extends MessageBridgeServiceBase {
     wsUri: string;
     connection?: signalR.HubConnection;
     connect(options?: IHttpConnectionOptions): Promise<void>;
-    sendMessage(msg: Message): void;
+    sendNetworkMessage(msg: Message): void;
 }
-//# sourceMappingURL=SignalRConnectionService.d.ts.map
+//# sourceMappingURL=SignalRMessageBridgeService.d.ts.map
