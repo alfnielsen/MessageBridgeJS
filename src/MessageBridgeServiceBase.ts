@@ -17,6 +17,9 @@ export abstract class MessageBridgeServiceBase {
   abstract connect(options?: unknown): Promise<void>;
   abstract sendNetworkMessage(msg: Message): void;
 
+ // return this.connection.start();
+
+
   protected onMessage(messageString: string | Message) {
     let messageDto: Message;
     try {

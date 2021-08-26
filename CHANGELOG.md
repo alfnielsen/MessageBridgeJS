@@ -1,4 +1,10 @@
-## 0.1.3
+## 0.1.5 message-bridge-js@commonjs
+
+Publish a commonjs build under tag @commonjs
+
+To install `npm i message-bridge-js@commonjs` or `yarn add message-bridge-js@commonjs`
+
+## 0.1.0-4
 
 Split into a base class `MessageBridgeServiceBase` an different network implementations.
 
