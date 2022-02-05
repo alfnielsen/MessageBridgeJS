@@ -1,10 +1,15 @@
-import * as signalR from "@microsoft/signalr";
-import { Message } from "./Message";
-import { IMessageServiceQuerySubscription, MessageDirection, SubscribeResponse, SubscribeResponseWithCatch } from "./MessageBridgeInterfaces";
+import * as signalR from '@microsoft/signalr';
+import { Message } from './Message';
+import { IMessageServiceQuerySubscription, MessageDirection, SubscribeResponse, SubscribeResponseWithCatch } from './MessageBridgeInterfaces';
 export declare abstract class MessageBridgeServiceBase {
     wsUri: string;
     connected: boolean;
     connection?: signalR.HubConnection;
+    debugLogger: (...data: any[]) => void;
+    debugLogging: {
+        messageReceived: boolean;
+        sendingMessage: boolean;
+    };
     constructor(wsUri: string);
     abstract connect(options?: unknown): Promise<void>;
     abstract sendNetworkMessage(msg: Message): void;
@@ -20,7 +25,7 @@ export declare abstract class MessageBridgeServiceBase {
     bridgeErrors: (Error | string)[];
     sendMessage<TPayload = any, TResponse = any, TSchema = any>(msg: Message<TPayload, TResponse, TSchema>, onSuccess?: SubscribeResponse<TResponse>, onError?: SubscribeResponse<any>): void;
     protected internalSendMessage(msg: Message): void;
-    subscribeEvent<TResponse = any>({ name, onEvent, }: {
+    subscribeEvent<TResponse = any>({ name, onEvent }: {
         name: string;
         onEvent: SubscribeResponse<TResponse>;
     }): () => void;
@@ -39,7 +44,7 @@ export declare abstract class MessageBridgeServiceBase {
         onSuccess?: SubscribeResponse<TResponse>;
         onError?: SubscribeResponse<any>;
     }): Message<TPayload, any, any>;
-    sendEvent<TPayload = any, TResponse = any, TSchema = any>({ name, payload, }: {
+    sendEvent<TPayload = any, TResponse = any, TSchema = any>({ name, payload }: {
         name: string;
         payload: TPayload;
     }): Message<TPayload, any, any>;

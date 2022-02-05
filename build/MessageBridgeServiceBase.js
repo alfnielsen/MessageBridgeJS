@@ -1,9 +1,14 @@
-import { Message } from "./Message";
-import { MessageDirection, MessageType, } from "./MessageBridgeInterfaces";
+import { Message } from './Message';
+import { MessageDirection, MessageType, } from './MessageBridgeInterfaces';
 var MessageBridgeServiceBase = /** @class */ (function () {
     function MessageBridgeServiceBase(wsUri) {
         this.wsUri = wsUri;
         this.connected = false;
+        this.debugLogger = (window === null || window === void 0 ? void 0 : window.console.log) || (function () { }); // set custom logger
+        this.debugLogging = {
+            messageReceived: false,
+            sendingMessage: false,
+        };
         this.subscriptionTrackIdList = {};
         this.subscriptionEventList = {};
         this.subscriptionQuery = [];
@@ -14,22 +19,22 @@ var MessageBridgeServiceBase = /** @class */ (function () {
     MessageBridgeServiceBase.prototype.onMessage = function (messageString) {
         var messageDto;
         try {
-            messageDto =
-                typeof messageString === "string"
-                    ? JSON.parse(messageString)
-                    : messageString;
+            messageDto = typeof messageString === 'string' ? JSON.parse(messageString) : messageString;
         }
         catch (e) {
             this.onError(e);
-            console.log("Incorrect message received: " + messageString);
+            console.log('Incorrect message received: ' + messageString);
             return;
         }
         try {
             var msg = Message.fromDto(messageDto);
+            if (this.debugLogging.messageReceived) {
+                this.debugLogger('Bridge (MessageReceived): ', msg);
+            }
             this.handleIncomingMessage(msg);
         }
         catch (e) {
-            console.log("Error in response handle for message: " + e);
+            console.log('Error in response handle for message: ' + e);
         }
     };
     MessageBridgeServiceBase.prototype.sendMessage = function (msg, onSuccess, onError) {
@@ -41,6 +46,9 @@ var MessageBridgeServiceBase = /** @class */ (function () {
     };
     MessageBridgeServiceBase.prototype.internalSendMessage = function (msg) {
         this.history.push(msg);
+        if (this.debugLogging.sendingMessage) {
+            this.debugLogger('Bridge (sendingMessage): ', msg);
+        }
         this.sendNetworkMessage(msg);
     };
     MessageBridgeServiceBase.prototype.subscribeEvent = function (_a) {
@@ -140,9 +148,7 @@ var MessageBridgeServiceBase = /** @class */ (function () {
     MessageBridgeServiceBase.prototype.receiveEventMessage = function (eventMsg) {
         var _this = this;
         if (this.subscriptionEventList[eventMsg.name]) {
-            this.subscriptionEventList[eventMsg.name].forEach(function (callback) {
-                return callback(eventMsg.payload, eventMsg);
-            });
+            this.subscriptionEventList[eventMsg.name].forEach(function (callback) { return callback(eventMsg.payload, eventMsg); });
         }
         this.subscriptionQuery
             .filter(function (x) { var _a, _b; return (_b = (_a = x.triggers) === null || _a === void 0 ? void 0 : _a.some(function (x) { return x === eventMsg.name; })) !== null && _b !== void 0 ? _b : false; })
