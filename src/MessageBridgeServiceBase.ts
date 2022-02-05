@@ -36,7 +36,7 @@ export abstract class MessageBridgeServiceBase {
     try {
       const msg = Message.fromDto(messageDto)
       if (this.debugLogging.messageReceived) {
-        this.debugLogger('Bridge (MessageReceived): ', msg)
+        this.debugLogger('Bridge (messageReceived): ', msg)
       }
       this.handleIncomingMessage(msg)
     } catch (e) {
