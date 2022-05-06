@@ -1,5 +1,5 @@
-import { Message } from './Message';
-import { MessageDirection, MessageType, } from './MessageBridgeInterfaces';
+import { Message } from "./Message";
+import { MessageDirection, MessageType, } from "./MessageBridgeInterfaces";
 var MessageBridgeServiceBase = /** @class */ (function () {
     function MessageBridgeServiceBase(wsUri) {
         this.wsUri = wsUri;
@@ -19,22 +19,25 @@ var MessageBridgeServiceBase = /** @class */ (function () {
     MessageBridgeServiceBase.prototype.onMessage = function (messageString) {
         var messageDto;
         try {
-            messageDto = typeof messageString === 'string' ? JSON.parse(messageString) : messageString;
+            messageDto =
+                typeof messageString === "string"
+                    ? JSON.parse(messageString)
+                    : messageString;
         }
         catch (e) {
             this.onError(e);
-            console.log('Incorrect message received: ' + messageString);
+            console.log("Incorrect message received: " + messageString);
             return;
         }
         try {
             var msg = Message.fromDto(messageDto);
             if (this.debugLogging.messageReceived) {
-                this.debugLogger('Bridge (messageReceived): ', msg);
+                this.debugLogger("Bridge (messageReceived): ", msg);
             }
             this.handleIncomingMessage(msg);
         }
         catch (e) {
-            console.log('Error in response handle for message: ' + e);
+            console.log("Error in response handle for message: " + e);
         }
     };
     MessageBridgeServiceBase.prototype.sendMessage = function (msg, onSuccess, onError) {
@@ -47,7 +50,7 @@ var MessageBridgeServiceBase = /** @class */ (function () {
     MessageBridgeServiceBase.prototype.internalSendMessage = function (msg) {
         this.history.push(msg);
         if (this.debugLogging.sendingMessage) {
-            this.debugLogger('Bridge (sendingMessage): ', msg);
+            this.debugLogger("Bridge (sendingMessage): ", msg);
         }
         this.sendNetworkMessage(msg);
     };
@@ -62,48 +65,51 @@ var MessageBridgeServiceBase = /** @class */ (function () {
             _this.subscriptionEventList[name].splice(index, 1);
         };
     };
-    MessageBridgeServiceBase.prototype.createCommandMessage = function (name, payload, direction) {
+    MessageBridgeServiceBase.prototype.createCommandMessage = function (name, payload, direction, module) {
         if (direction === void 0) { direction = MessageDirection.ToServer; }
         return Message.create({
             name: name,
             type: MessageType.Command,
             payload: payload,
             direction: direction,
+            module: module,
         });
     };
-    MessageBridgeServiceBase.prototype.createQueryMessage = function (name, payload, direction) {
+    MessageBridgeServiceBase.prototype.createQueryMessage = function (name, payload, direction, module) {
         if (direction === void 0) { direction = MessageDirection.ToServer; }
         return Message.create({
             name: name,
             type: MessageType.Query,
             payload: payload,
             direction: direction,
+            module: module,
         });
     };
-    MessageBridgeServiceBase.prototype.createEventMessage = function (name, payload, direction) {
+    MessageBridgeServiceBase.prototype.createEventMessage = function (name, payload, direction, module) {
         if (direction === void 0) { direction = MessageDirection.ToServer; }
         return Message.create({
             name: name,
             type: MessageType.Event,
             payload: payload,
             direction: direction,
+            module: module,
         });
     };
     MessageBridgeServiceBase.prototype.sendCommand = function (_a) {
-        var name = _a.name, payload = _a.payload, onSuccess = _a.onSuccess, onError = _a.onError;
-        var msg = this.createCommandMessage(name, payload);
+        var name = _a.name, payload = _a.payload, onSuccess = _a.onSuccess, onError = _a.onError, module = _a.module;
+        var msg = this.createCommandMessage(name, payload, undefined, module);
         this.sendMessage(msg, onSuccess, onError);
         return msg;
     };
     MessageBridgeServiceBase.prototype.sendQuery = function (_a) {
-        var name = _a.name, payload = _a.payload, onSuccess = _a.onSuccess, onError = _a.onError;
-        var msg = this.createQueryMessage(name, payload);
+        var name = _a.name, payload = _a.payload, onSuccess = _a.onSuccess, onError = _a.onError, module = _a.module;
+        var msg = this.createQueryMessage(name, payload, undefined, module);
         this.sendMessage(msg, onSuccess, onError);
         return msg;
     };
     MessageBridgeServiceBase.prototype.sendEvent = function (_a) {
-        var name = _a.name, payload = _a.payload;
-        var msg = this.createEventMessage(name, payload);
+        var name = _a.name, payload = _a.payload, module = _a.module;
+        var msg = this.createEventMessage(name, payload, undefined, module);
         this.sendMessage(msg);
         return msg;
     };
@@ -115,6 +121,7 @@ var MessageBridgeServiceBase = /** @class */ (function () {
             payload: opt.query,
             onSuccess: opt.onUpdate,
             onError: opt.onError,
+            module: opt.module,
         });
         //then subscribe
         this.subscriptionQuery.push(opt);
@@ -148,7 +155,9 @@ var MessageBridgeServiceBase = /** @class */ (function () {
     MessageBridgeServiceBase.prototype.receiveEventMessage = function (eventMsg) {
         var _this = this;
         if (this.subscriptionEventList[eventMsg.name]) {
-            this.subscriptionEventList[eventMsg.name].forEach(function (callback) { return callback(eventMsg.payload, eventMsg); });
+            this.subscriptionEventList[eventMsg.name].forEach(function (callback) {
+                return callback(eventMsg.payload, eventMsg);
+            });
         }
         this.subscriptionQuery
             .filter(function (x) { var _a, _b; return (_b = (_a = x.triggers) === null || _a === void 0 ? void 0 : _a.some(function (x) { return x === eventMsg.name; })) !== null && _b !== void 0 ? _b : false; })

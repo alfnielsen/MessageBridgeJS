@@ -1,12 +1,12 @@
-import * as signalR from '@microsoft/signalr'
-import { Message } from './Message'
+import * as signalR from "@microsoft/signalr"
+import { Message } from "./Message"
 import {
   IMessageServiceQuerySubscription,
   MessageDirection,
   MessageType,
   SubscribeResponse,
   SubscribeResponseWithCatch,
-} from './MessageBridgeInterfaces'
+} from "./MessageBridgeInterfaces"
 
 export abstract class MessageBridgeServiceBase {
   connected = false
@@ -27,20 +27,23 @@ export abstract class MessageBridgeServiceBase {
   protected onMessage(messageString: string | Message) {
     let messageDto: Message
     try {
-      messageDto = typeof messageString === 'string' ? (JSON.parse(messageString) as Message) : messageString
+      messageDto =
+        typeof messageString === "string"
+          ? (JSON.parse(messageString) as Message)
+          : messageString
     } catch (e) {
       this.onError(e as Error)
-      console.log('Incorrect message received: ' + messageString)
+      console.log("Incorrect message received: " + messageString)
       return
     }
     try {
       const msg = Message.fromDto(messageDto)
       if (this.debugLogging.messageReceived) {
-        this.debugLogger('Bridge (messageReceived): ', msg)
+        this.debugLogger("Bridge (messageReceived): ", msg)
       }
       this.handleIncomingMessage(msg)
     } catch (e) {
-      console.log('Error in response handle for message: ' + e)
+      console.log("Error in response handle for message: " + e)
     }
   }
 
@@ -72,12 +75,18 @@ export abstract class MessageBridgeServiceBase {
   protected internalSendMessage(msg: Message) {
     this.history.push(msg)
     if (this.debugLogging.sendingMessage) {
-      this.debugLogger('Bridge (sendingMessage): ', msg)
+      this.debugLogger("Bridge (sendingMessage): ", msg)
     }
     this.sendNetworkMessage(msg)
   }
 
-  subscribeEvent<TResponse = any>({ name, onEvent }: { name: string; onEvent: SubscribeResponse<TResponse> }) {
+  subscribeEvent<TResponse = any>({
+    name,
+    onEvent,
+  }: {
+    name: string
+    onEvent: SubscribeResponse<TResponse>
+  }) {
     if (!this.subscriptionEventList[name]) this.subscriptionEventList[name] = []
     this.subscriptionEventList[name].push(onEvent)
     return () => {
@@ -90,30 +99,44 @@ export abstract class MessageBridgeServiceBase {
     name: string,
     payload: TPayload,
     direction = MessageDirection.ToServer,
+    module?: string,
   ) {
     return Message.create<TPayload, TResponse, TSchema>({
       name,
       type: MessageType.Command,
       payload,
       direction,
+      module,
     })
   }
 
-  createQueryMessage<TPayload = any>(name: string, payload: TPayload, direction = MessageDirection.ToServer) {
+  createQueryMessage<TPayload = any>(
+    name: string,
+    payload: TPayload,
+    direction = MessageDirection.ToServer,
+    module?: string,
+  ) {
     return Message.create({
       name,
       type: MessageType.Query,
       payload,
       direction,
+      module,
     })
   }
 
-  createEventMessage<TPayload = any>(name: string, payload: TPayload, direction = MessageDirection.ToServer) {
+  createEventMessage<TPayload = any>(
+    name: string,
+    payload: TPayload,
+    direction = MessageDirection.ToServer,
+    module?: string,
+  ) {
     return Message.create({
       name,
       type: MessageType.Event,
       payload,
       direction,
+      module,
     })
   }
 
@@ -122,13 +145,15 @@ export abstract class MessageBridgeServiceBase {
     payload,
     onSuccess,
     onError,
+    module,
   }: {
     name: string
     payload: TPayload
     onSuccess?: SubscribeResponse<TResponse>
     onError?: SubscribeResponse<any>
+    module?: string
   }) {
-    const msg = this.createCommandMessage(name, payload)
+    const msg = this.createCommandMessage(name, payload, undefined, module)
     this.sendMessage<TPayload, TResponse, TSchema>(msg, onSuccess, onError)
     return msg
   }
@@ -138,30 +163,43 @@ export abstract class MessageBridgeServiceBase {
     payload,
     onSuccess,
     onError,
+    module,
   }: {
     name: string
     payload: TPayload
     onSuccess?: SubscribeResponse<TResponse>
     onError?: SubscribeResponse<any>
+    module?: string
   }) {
-    const msg = this.createQueryMessage(name, payload)
+    const msg = this.createQueryMessage(name, payload, undefined, module)
     this.sendMessage<TPayload, TResponse, TSchema>(msg, onSuccess, onError)
     return msg
   }
 
-  sendEvent<TPayload = any, TResponse = any, TSchema = any>({ name, payload }: { name: string; payload: TPayload }) {
-    const msg = this.createEventMessage(name, payload)
+  sendEvent<TPayload = any, TResponse = any, TSchema = any>({
+    name,
+    payload,
+    module,
+  }: {
+    name: string
+    payload: TPayload
+    module?: string
+  }) {
+    const msg = this.createEventMessage(name, payload, undefined, module)
     this.sendMessage<TPayload, TResponse, TSchema>(msg)
     return msg
   }
 
-  subscribeQuery<TPayload = any, TResponse = any>(opt: IMessageServiceQuerySubscription<TPayload, TResponse>) {
+  subscribeQuery<TPayload = any, TResponse = any>(
+    opt: IMessageServiceQuerySubscription<TPayload, TResponse>,
+  ) {
     //call right away
     this.sendQuery({
       name: opt.name,
       payload: opt.query,
       onSuccess: opt.onUpdate,
       onError: opt.onError,
+      module: opt.module,
     })
     //then subscribe
     this.subscriptionQuery.push(opt)
@@ -196,7 +234,9 @@ export abstract class MessageBridgeServiceBase {
 
   protected receiveEventMessage(eventMsg: Message) {
     if (this.subscriptionEventList[eventMsg.name]) {
-      this.subscriptionEventList[eventMsg.name].forEach((callback) => callback(eventMsg.payload, eventMsg))
+      this.subscriptionEventList[eventMsg.name].forEach((callback) =>
+        callback(eventMsg.payload, eventMsg),
+      )
     }
     this.subscriptionQuery
       .filter((x) => x.triggers?.some((x) => x === eventMsg.name) ?? false)

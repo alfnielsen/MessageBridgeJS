@@ -13,6 +13,7 @@ export declare type SubscribeResponseWithCatch<TMessageType, TErrorMessageType =
     onError?: SubscribeResponse<TErrorMessageType>;
 };
 export interface IMessageServiceQuerySubscription<TQuery, TResponse> {
+    module?: string;
     name: string;
     query: TQuery;
     triggers: string[];

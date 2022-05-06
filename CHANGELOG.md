@@ -1,3 +1,7 @@
+## 0.1.9
+
+module (as optional string) is added to the message interface (and create methods)
+
 ## 0.1.5 message-bridge-js@commonjs
 
 Publish a commonjs build under tag @commonjs

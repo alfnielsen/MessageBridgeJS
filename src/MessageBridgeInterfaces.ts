@@ -1,4 +1,4 @@
-import {Message} from "./Message";
+import { Message } from "./Message"
 
 export enum MessageType {
   Command = "Command",
@@ -9,7 +9,10 @@ export enum MessageType {
   Error = "Error",
 }
 
-export type SubscribeResponse<TMessageType> = (payload: TMessageType, bridgeMessage: Message<TMessageType>) => void
+export type SubscribeResponse<TMessageType> = (
+  payload: TMessageType,
+  bridgeMessage: Message<TMessageType>,
+) => void
 
 export type SubscribeResponseWithCatch<TMessageType, TErrorMessageType = any> = {
   onSuccess?: SubscribeResponse<TMessageType>
@@ -17,13 +20,13 @@ export type SubscribeResponseWithCatch<TMessageType, TErrorMessageType = any> = 
 }
 
 export interface IMessageServiceQuerySubscription<TQuery, TResponse> {
+  module?: string
   name: string
   query: TQuery
   triggers: string[]
   onUpdate: SubscribeResponse<TResponse>
   onError?: SubscribeResponse<any>
 }
-
 
 export enum MessageDirection {
   ToClient = "ToClient",

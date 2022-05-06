@@ -1,5 +1,6 @@
 import { MessageDirection, MessageType } from "./MessageBridgeInterfaces";
 export declare class Message<TPayload = any, TResponse = any, TSchema = any> {
+    module?: string;
     name: string;
     type: MessageType;
     isError: boolean;
@@ -8,7 +9,7 @@ export declare class Message<TPayload = any, TResponse = any, TSchema = any> {
     payload?: TPayload;
     schema?: TSchema;
     direction: MessageDirection;
-    constructor(name: string, type: MessageType, payload?: TPayload, schema?: TSchema, trackId?: string, created?: string, direction?: MessageDirection);
+    constructor(name: string, type: MessageType, payload?: TPayload, schema?: TSchema, trackId?: string, created?: string, direction?: MessageDirection, module?: string);
     static create<TPayload = any, TResponse = any, TSchema = any>(opt: {
         name: string;
         type: MessageType;
@@ -17,6 +18,7 @@ export declare class Message<TPayload = any, TResponse = any, TSchema = any> {
         trackId?: string;
         created?: string;
         direction?: MessageDirection;
+        module?: string;
     }): Message<TPayload, TResponse, TSchema>;
     static fromDto<TPayload = any, TResponse = any, TSchema = any>(msg: Message<TPayload, TResponse, TSchema>, direction?: MessageDirection): Message<TPayload, TResponse, TSchema>;
 }

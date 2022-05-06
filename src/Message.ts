@@ -1,7 +1,8 @@
-import {v4 as uuidv4} from "uuid"
-import {MessageDirection, MessageType} from "./MessageBridgeInterfaces";
+import { v4 as uuidv4 } from "uuid"
+import { MessageDirection, MessageType } from "./MessageBridgeInterfaces"
 
 export class Message<TPayload = any, TResponse = any, TSchema = any> {
+  public module?: string
   public name: string
   public type: MessageType
   public isError: boolean
@@ -17,8 +18,10 @@ export class Message<TPayload = any, TResponse = any, TSchema = any> {
     schema?: TSchema,
     trackId = uuidv4(),
     created = new Date(Date.now()).toJSON(),
-    direction = MessageDirection.ToServer
+    direction = MessageDirection.ToServer,
+    module?: string,
   ) {
+    this.module = module
     this.name = name
     this.type = type
     this.trackId = trackId
@@ -37,6 +40,7 @@ export class Message<TPayload = any, TResponse = any, TSchema = any> {
     trackId?: string
     created?: string
     direction?: MessageDirection
+    module?: string
   }) {
     return new Message<TPayload, TResponse, TSchema>(
       opt.name,
@@ -45,13 +49,14 @@ export class Message<TPayload = any, TResponse = any, TSchema = any> {
       opt.schema,
       opt.trackId,
       opt.created,
-      opt.direction
+      opt.direction,
+      opt.module,
     )
   }
 
   static fromDto<TPayload = any, TResponse = any, TSchema = any>(
     msg: Message<TPayload, TResponse, TSchema>,
-    direction = MessageDirection.ToClient
+    direction = MessageDirection.ToClient,
   ): Message<TPayload, TResponse, TSchema> {
     return new Message<TPayload, TResponse, TSchema>(
       msg.name,
@@ -60,7 +65,8 @@ export class Message<TPayload = any, TResponse = any, TSchema = any> {
       msg.schema,
       msg.trackId,
       msg.created,
-      direction
+      direction,
+      msg.module,
     )
   }
 }
