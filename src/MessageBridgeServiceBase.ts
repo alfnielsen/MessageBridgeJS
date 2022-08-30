@@ -15,6 +15,8 @@ export abstract class MessageBridgeServiceBase {
   debugLogging = {
     messageReceived: false,
     sendingMessage: false,
+    messageReceivedFilter: undefined as undefined | string | RegExp,
+    sendingMessageFilter: undefined as undefined | string | RegExp,
   }
 
   constructor(public wsUri: string) {}
@@ -39,7 +41,13 @@ export abstract class MessageBridgeServiceBase {
     try {
       const msg = Message.fromDto(messageDto)
       if (this.debugLogging.messageReceived) {
-        this.debugLogger("Bridge (messageReceived): ", msg)
+        let log = true
+        if (this.debugLogging.messageReceivedFilter) {
+          log = !!msg.name.match(this.debugLogging.messageReceivedFilter)
+        }
+        if (log) {
+          this.debugLogger("Bridge (messageReceived): ", msg)
+        }
       }
       this.handleIncomingMessage(msg)
     } catch (e) {
@@ -75,7 +83,13 @@ export abstract class MessageBridgeServiceBase {
   protected internalSendMessage(msg: Message) {
     this.history.push(msg)
     if (this.debugLogging.sendingMessage) {
-      this.debugLogger("Bridge (sendingMessage): ", msg)
+      let log = true
+      if (this.debugLogging.sendingMessageFilter) {
+        log = !!msg.name.match(this.debugLogging.sendingMessageFilter)
+      }
+      if (log) {
+        this.debugLogger("Bridge (sendingMessage): ", msg)
+      }
     }
     this.sendNetworkMessage(msg)
   }

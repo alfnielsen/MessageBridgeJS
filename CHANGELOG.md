@@ -1,3 +1,17 @@
+## 0.1.10
+
+Add debugLogging filters:
+
+- messageReceivedFilter = undefined (undefined | string RegExp)
+- sendingMessageFilter = undefined (undefined | string RegExp)
+
+It filter's message names (Only log messages with matching name)
+
+```ts
+// EX:
+messageBridge.debugLogging.messageReceivedFilter = /^area/
+```
+
 ## 0.1.9
 
 module (as optional string) is added to the message interface (and create methods)

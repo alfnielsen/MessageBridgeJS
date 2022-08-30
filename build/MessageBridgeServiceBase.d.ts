@@ -9,6 +9,8 @@ export declare abstract class MessageBridgeServiceBase {
     debugLogging: {
         messageReceived: boolean;
         sendingMessage: boolean;
+        messageReceivedFilter: string | RegExp | undefined;
+        sendingMessageFilter: string | RegExp | undefined;
     };
     constructor(wsUri: string);
     abstract connect(options?: unknown): Promise<void>;

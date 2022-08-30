@@ -8,6 +8,8 @@ var MessageBridgeServiceBase = /** @class */ (function () {
         this.debugLogging = {
             messageReceived: false,
             sendingMessage: false,
+            messageReceivedFilter: undefined,
+            sendingMessageFilter: undefined,
         };
         this.subscriptionTrackIdList = {};
         this.subscriptionEventList = {};
@@ -32,7 +34,13 @@ var MessageBridgeServiceBase = /** @class */ (function () {
         try {
             var msg = Message.fromDto(messageDto);
             if (this.debugLogging.messageReceived) {
-                this.debugLogger("Bridge (messageReceived): ", msg);
+                var log = true;
+                if (this.debugLogging.messageReceivedFilter) {
+                    log = !!msg.name.match(this.debugLogging.messageReceivedFilter);
+                }
+                if (log) {
+                    this.debugLogger("Bridge (messageReceived): ", msg);
+                }
             }
             this.handleIncomingMessage(msg);
         }
@@ -50,7 +58,13 @@ var MessageBridgeServiceBase = /** @class */ (function () {
     MessageBridgeServiceBase.prototype.internalSendMessage = function (msg) {
         this.history.push(msg);
         if (this.debugLogging.sendingMessage) {
-            this.debugLogger("Bridge (sendingMessage): ", msg);
+            var log = true;
+            if (this.debugLogging.sendingMessageFilter) {
+                log = !!msg.name.match(this.debugLogging.sendingMessageFilter);
+            }
+            if (log) {
+                this.debugLogger("Bridge (sendingMessage): ", msg);
+            }
         }
         this.sendNetworkMessage(msg);
     };
