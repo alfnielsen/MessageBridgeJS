@@ -1,13 +1,13 @@
 {
   "name": "message-bridge-js",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "homepage": "https://github.com/alfnielsen/MessageBridgeJS",
   "repository": {
     "type": "git",
     "url": "https://github.com/alfnielsen/MessageBridgeJS.git"
   },
   "author": "Alf Nielsen <alfnielsen@gmail.com>",
-  "main": "build/MessageBridgeService.js",
+  "main": "build/index.js",
   "dependencies": {
     "@microsoft/signalr": "^5.0.9",
     "uuid": "^8.3.2"

@@ -1,3 +1,8 @@
+## 0.1.11
+
+Export alle message bridge types from index.js (index.ts),
+to avoid multiple import of message bridge elements
+
 ## 0.1.10
 
 Add debugLogging filters:
