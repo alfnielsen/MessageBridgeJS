@@ -1,6 +1,6 @@
 {
   "name": "message-bridge-js",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "homepage": "https://github.com/alfnielsen/MessageBridgeJS",
   "repository": {
     "type": "git",
@@ -8,16 +8,17 @@
   },
   "author": "Alf Nielsen <alfnielsen@gmail.com>",
   "exports": {
-    "require": "./dist/index.cjs",
-    "default": "./dist/index.modern.js"
+    "require": "./dist/index.js",
+    "default": "./dist/index.modern.mjs"
   },
-  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
   "module": "./dist/index.module.js",
   "unpkg": "./dist/index.umd.js",
   "source": "src/index.ts",
   "scripts": {
     "test": "yarn jest",
-    "build": "microbundle",
+    "build": "microbundle --format umd,cjs,es",
     "publish": "npm publish"
   },
   "dependencies": {
