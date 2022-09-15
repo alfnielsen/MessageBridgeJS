@@ -1,3 +1,7 @@
+## 0.1.12
+
+Add onClose
+
 ## 0.1.11
 
 Export alle message bridge types from index.js (index.ts),
