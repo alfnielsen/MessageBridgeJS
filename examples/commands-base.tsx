@@ -1,16 +1,20 @@
 // import React, { useEffect, useState } from "react"
-import { Message } from '../src/Message'
-import { MessageBridgeService } from '../src/MessageBridgeService'
+import { Message } from "../src/Message"
+import { MessageBridgeService } from "../src/MessageBridgeService"
 // import { SignalRMessageBridgeService } from "../src/SignalRMessageBridgeService"
 // import { WebSocketConnectionService } from "../src/WebSocketConnectionService"
 
 // # MessageBridgeService is a SignalRMessageBridgeService!
-const msgBridge = new MessageBridgeService('ws:/localhost:8080')
+const msgBridge = new MessageBridgeService("ws:/localhost:8080")
 
 // Enabled (console) logging
 // msgBridge.debugLogger = console.log // custom logger can be set
 msgBridge.debugLogging.messageReceived = true
 msgBridge.debugLogging.sendingMessage = true
+
+msgBridge.onClose = (reason) => {
+  console.log("connection closed", reason)
+}
 
 // # You can also use it directly
 // const msgBridge = new SignalRMessageBridgeService("ws:/localhost:8080")
@@ -29,7 +33,11 @@ msgBridge.debugLogging.sendingMessage = true
  * @param triggers
  */
 
-function useQuery<TQuery, TResponse>(name: string, query: TQuery, triggers: string[]): TResponse | undefined {
+function useQuery<TQuery, TResponse>(
+  name: string,
+  query: TQuery,
+  triggers: string[],
+): TResponse | undefined {
   //@ts-ignore
   const [state, setState] = useState<TResponse | undefined>()
   //@ts-ignore
@@ -54,7 +62,7 @@ export interface ICreateTodoItem {
 export const CreateTodoItem = (command: ICreateTodoItem) => {
   return new Promise((resolve, reject) => {
     msgBridge.sendCommand<ICreateTodoItem, number>({
-      name: 'CreateTodoItem',
+      name: "CreateTodoItem",
       payload: command,
       onSuccess: (id: number, msg) => {
         resolve(id)
@@ -66,13 +74,13 @@ export const CreateTodoItem = (command: ICreateTodoItem) => {
   })
 }
 
-CreateTodoItem({ listId: 1, title: 'ss' }).then((id) => {})
+CreateTodoItem({ listId: 1, title: "ss" }).then((id) => {})
 
 export interface IDeleteTodoItem {
   id: number
 }
 export const DeleteTodoItem = (command: IDeleteTodoItem) => {
-  msgBridge.sendCommand({ name: 'DeleteTodoItem', payload: command })
+  msgBridge.sendCommand({ name: "DeleteTodoItem", payload: command })
 }
 
 export interface IUpdateTodoItem {
@@ -97,11 +105,12 @@ interface IGetTodoItem {
   id: number
 }
 
-const useGetTodo = (id: number, triggers: string[]) => useQuery<IGetTodoItem, ITodoItem>('GetTodo', { id }, triggers)
+const useGetTodo = (id: number, triggers: string[]) =>
+  useQuery<IGetTodoItem, ITodoItem>("GetTodo", { id }, triggers)
 
 export const functionalComponent = () => {
-  var todoItem = useGetTodo(1, ['UpdateTodoItem'])
-  var todoItem = useGetTodo(1, ['UpdateTodoItem'])
+  var todoItem = useGetTodo(1, ["UpdateTodoItem"])
+  var todoItem = useGetTodo(1, ["UpdateTodoItem"])
   //@ts-ignore
   return <div>{todoItem?.id}</div>
 }

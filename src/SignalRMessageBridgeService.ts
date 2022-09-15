@@ -12,6 +12,9 @@ export class SignalRMessageBridgeService extends MessageBridgeServiceBase {
     this.connection.on("ReceiveMessage", (messageString: string | Message) => {
       this.onMessage(messageString)
     })
+    this.connection.onclose((error) => {
+      this.onClose(error)
+    })
     return this.connection
       .start()
       .then(() => {

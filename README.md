@@ -26,7 +26,8 @@ Underlying commands _(can sometime be used to fetch trackId ect...)_
 - createCommandMessage
 - createQueryMessage
 - createEventMessage
-- onError
+- onError // override to handle errors
+- onClose // override to handle close
 
 Protected commands
 
@@ -41,7 +42,7 @@ Protected commands
 const bridge = new MessageBridgeService("ws://localhost:8080")
 await bridge.connect()
 
-// Commmand
+// Command
 const command: ICreateTodo = { name: "Remember to", priority: "low" }
 bridge.sendCommand({
   module: "base-module", // module is optional (in version 0.1.x)
@@ -170,7 +171,7 @@ and uses @microsoft/SignalR and its back ends hubs.
 
 The is not a restriction, but a choice for the first version.
 Other implementation using other messageQues then SignalR
-and other backends like Java can be created in the future.
+and other backends like Javascript (typescript) or Java can be created in the future.
 
 ### Flow diagram
 

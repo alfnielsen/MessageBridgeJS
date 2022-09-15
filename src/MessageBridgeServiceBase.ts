@@ -230,6 +230,8 @@ export abstract class MessageBridgeServiceBase {
   onError(err: Error) {
     this.bridgeErrors.push(err)
   }
+  // can be overwritten by consumer!
+  onClose(err: string | Error | undefined) {}
 
   handleIncomingMessage(msg: Message) {
     this.history.push(msg)
