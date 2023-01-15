@@ -1,4 +1,6 @@
-## 0.2.0
+## 0.9.0
+
+(Close to first 1.0 release)
 
 Total rewrite of internals, but the API is almost the same.
 
