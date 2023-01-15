@@ -1,17 +1,27 @@
-import * as signalR from "@microsoft/signalr"
-import { Message } from "./Message"
 import {
-  IMessageServiceQuerySubscription,
+  Message,
   MessageDirection,
   MessageType,
+  RequestResponse,
+  SubscribeErrorAsync,
+  SubscribeEvent,
+  SubscribeResponseAsync,
+  InternalTrackedSubscribeResponseWithCatch,
+  OmitAndOptional,
   SubscribeResponse,
-  SubscribeResponseWithCatch,
-} from "./MessageBridgeInterfaces"
+  SubscribeError,
+} from "./MessageBridgeTypes"
+
+import {
+  createCommandMessage,
+  createEventMessage,
+  createMessageFromDto,
+  createQueryMessage,
+} from "./MessageBridgeHelper"
 
 export abstract class MessageBridgeServiceBase {
   connected = false
-  connection?: signalR.HubConnection
-  debugLogger: (...data: any[]) => void = window?.console.log || (() => {}) // set custom logger
+  debugLogger: (...data: any[]) => void = console?.log ?? (() => {}) // set custom logger
   debugLogging = {
     messageReceived: false,
     sendingMessage: false,
@@ -24,9 +34,130 @@ export abstract class MessageBridgeServiceBase {
   abstract connect(options?: unknown): Promise<void>
   abstract sendNetworkMessage(msg: Message): void
 
-  // return this.connection.start();
+  subscribedTrackIdMap: {
+    [trackId: string]: InternalTrackedSubscribeResponseWithCatch<any, any>
+  } = {}
+
+  subscribedEventListMap: {
+    [eventName: string]: SubscribeEvent<any>[]
+  } = {}
+
+  history: Message[] = []
+  bridgeErrors: (Error | string)[] = []
+
+  sendMessage<TRequest = any, TResponse = any, TError = any, TSchema = any>(
+    requestMessage: Message<TRequest, TSchema>,
+    onSuccess?: SubscribeResponse<TRequest, TResponse>,
+    onError?: SubscribeError<any, TRequest>,
+  ) {
+    requestMessage.direction = MessageDirection.ToServer
+    this.internalSendMessage(requestMessage)
+
+    // add chainable promise
+    return new Promise<RequestResponse<TRequest, TResponse>>((resolve, reject) => {
+      // wrap in promise to allow async (and run chains)
+      this.subscribedTrackIdMap[requestMessage.trackId] = {
+        onSuccess(responseOpt) {
+          const opt = { ...responseOpt, request: requestMessage.payload, requestMessage }
+          onSuccess?.(opt)
+          resolve(opt)
+        },
+        onError(errorOpt) {
+          const opt = { ...errorOpt, request: requestMessage.payload, requestMessage }
+          onError?.(opt)
+          reject(opt)
+        },
+        requestMessage: requestMessage,
+      } as InternalTrackedSubscribeResponseWithCatch<TRequest, TResponse, TError>
+    }).finally(() => {
+      //console.log("finally")
+      delete this.subscribedTrackIdMap[requestMessage.trackId]
+    })
+  }
+
+  subscribeEvent<TResponse = any>({
+    name,
+    onEvent,
+  }: {
+    name: string | string[]
+    onEvent: SubscribeEvent<TResponse>
+  }): () => void {
+    if (Array.isArray(name)) {
+      const unsubs = name.map((_name) => this.subscribeEvent({ name: _name, onEvent }))
+      return () => unsubs.forEach((unsub) => unsub())
+    }
+    if (!this.subscribedEventListMap[name]) this.subscribedEventListMap[name] = []
+    this.subscribedEventListMap[name].push(onEvent)
+    return () => {
+      const index = this.subscribedEventListMap[name].findIndex((x) => x === onEvent)
+      this.subscribedEventListMap[name].splice(index, 1)
+    }
+  }
+
+  sendCommand<TRequest = any, TResponse = any, TSchema = any>({
+    name,
+    payload,
+    onSuccess,
+    onError,
+    module,
+  }: {
+    name: string
+    payload: TRequest
+    onSuccess?: SubscribeResponseAsync<TRequest, TResponse>
+    onError?: SubscribeErrorAsync<any>
+    module?: string
+  }) {
+    const msg = createCommandMessage({
+      name,
+      payload,
+      module,
+    })
+    return this.sendMessage<TRequest, TResponse, TSchema>(msg, onSuccess, onError)
+  }
+
+  sendQuery<TRequest = any, TResponse = any, TSchema = any>({
+    name,
+    payload,
+    onSuccess,
+    onError,
+    module,
+  }: {
+    name: string
+    payload: TRequest
+    onSuccess?: SubscribeResponse<TRequest, TResponse>
+    onError?: SubscribeError<any>
+    module?: string
+  }) {
+    const msg = createQueryMessage({
+      name,
+      payload,
+      module,
+    })
+    return this.sendMessage<TRequest, TResponse, TSchema>(msg, onSuccess, onError)
+  }
+
+  sendEvent<TPayload = any>(
+    top: OmitAndOptional<
+      Message<TPayload>,
+      "trackId" | "created" | "isError" | "type",
+      "direction"
+    >,
+  ) {
+    const msg = createEventMessage(top)
+    msg.direction = MessageDirection.ToServer
+    this.internalSendMessage(msg)
+    return msg
+  }
+
+  // can be overwritten by consumer!
+  onError(err: Error) {
+    this.bridgeErrors.push(err)
+  }
+  // can be overwritten by consumer!
+  onClose(err: string | Error | undefined) {}
 
   protected onMessage(messageString: string | Message) {
+    //console.log("onMessage", messageString)
     let messageDto: Message
     try {
       messageDto =
@@ -35,11 +166,11 @@ export abstract class MessageBridgeServiceBase {
           : messageString
     } catch (e) {
       this.onError(e as Error)
-      console.log("Incorrect message received: " + messageString)
+      //console.log("Incorrect message received: " + messageString)
       return
     }
     try {
-      const msg = Message.fromDto(messageDto)
+      const msg = createMessageFromDto(messageDto)
       if (this.debugLogging.messageReceived) {
         let log = true
         if (this.debugLogging.messageReceivedFilter) {
@@ -53,31 +184,6 @@ export abstract class MessageBridgeServiceBase {
     } catch (e) {
       console.log("Error in response handle for message: " + e)
     }
-  }
-
-  protected subscriptionTrackIdList: {
-    [trackId: string]: SubscribeResponseWithCatch<any>
-  } = {}
-
-  protected subscriptionEventList: {
-    [eventName: string]: SubscribeResponse<any>[]
-  } = {}
-
-  protected subscriptionQuery: IMessageServiceQuerySubscription<any, any>[] = []
-
-  history: Message[] = []
-  bridgeErrors: (Error | string)[] = []
-
-  sendMessage<TPayload = any, TResponse = any, TSchema = any>(
-    msg: Message<TPayload, TResponse, TSchema>,
-    onSuccess?: SubscribeResponse<TResponse>,
-    onError?: SubscribeResponse<any>,
-  ) {
-    msg.direction = MessageDirection.ToServer
-    if (onSuccess || onError) {
-      this.subscriptionTrackIdList[msg.trackId] = { onSuccess, onError }
-    }
-    this.internalSendMessage(msg)
   }
 
   protected internalSendMessage(msg: Message) {
@@ -94,171 +200,35 @@ export abstract class MessageBridgeServiceBase {
     this.sendNetworkMessage(msg)
   }
 
-  subscribeEvent<TResponse = any>({
-    name,
-    onEvent,
-  }: {
-    name: string
-    onEvent: SubscribeResponse<TResponse>
-  }) {
-    if (!this.subscriptionEventList[name]) this.subscriptionEventList[name] = []
-    this.subscriptionEventList[name].push(onEvent)
-    return () => {
-      const index = this.subscriptionEventList[name].findIndex((x) => x === onEvent)
-      this.subscriptionEventList[name].splice(index, 1)
-    }
-  }
-
-  createCommandMessage<TPayload = any, TResponse = any, TSchema = any>(
-    name: string,
-    payload: TPayload,
-    direction = MessageDirection.ToServer,
-    module?: string,
-  ) {
-    return Message.create<TPayload, TResponse, TSchema>({
-      name,
-      type: MessageType.Command,
-      payload,
-      direction,
-      module,
-    })
-  }
-
-  createQueryMessage<TPayload = any>(
-    name: string,
-    payload: TPayload,
-    direction = MessageDirection.ToServer,
-    module?: string,
-  ) {
-    return Message.create({
-      name,
-      type: MessageType.Query,
-      payload,
-      direction,
-      module,
-    })
-  }
-
-  createEventMessage<TPayload = any>(
-    name: string,
-    payload: TPayload,
-    direction = MessageDirection.ToServer,
-    module?: string,
-  ) {
-    return Message.create({
-      name,
-      type: MessageType.Event,
-      payload,
-      direction,
-      module,
-    })
-  }
-
-  sendCommand<TPayload = any, TResponse = any, TSchema = any>({
-    name,
-    payload,
-    onSuccess,
-    onError,
-    module,
-  }: {
-    name: string
-    payload: TPayload
-    onSuccess?: SubscribeResponse<TResponse>
-    onError?: SubscribeResponse<any>
-    module?: string
-  }) {
-    const msg = this.createCommandMessage(name, payload, undefined, module)
-    this.sendMessage<TPayload, TResponse, TSchema>(msg, onSuccess, onError)
-    return msg
-  }
-
-  sendQuery<TPayload = any, TResponse = any, TSchema = any>({
-    name,
-    payload,
-    onSuccess,
-    onError,
-    module,
-  }: {
-    name: string
-    payload: TPayload
-    onSuccess?: SubscribeResponse<TResponse>
-    onError?: SubscribeResponse<any>
-    module?: string
-  }) {
-    const msg = this.createQueryMessage(name, payload, undefined, module)
-    this.sendMessage<TPayload, TResponse, TSchema>(msg, onSuccess, onError)
-    return msg
-  }
-
-  sendEvent<TPayload = any, TResponse = any, TSchema = any>({
-    name,
-    payload,
-    module,
-  }: {
-    name: string
-    payload: TPayload
-    module?: string
-  }) {
-    const msg = this.createEventMessage(name, payload, undefined, module)
-    this.sendMessage<TPayload, TResponse, TSchema>(msg)
-    return msg
-  }
-
-  subscribeQuery<TPayload = any, TResponse = any>(
-    opt: IMessageServiceQuerySubscription<TPayload, TResponse>,
-  ) {
-    //call right away
-    this.sendQuery({
-      name: opt.name,
-      payload: opt.query,
-      onSuccess: opt.onUpdate,
-      onError: opt.onError,
-      module: opt.module,
-    })
-    //then subscribe
-    this.subscriptionQuery.push(opt)
-
-    return /*unsubscribe*/ () => {
-      const index = this.subscriptionQuery.findIndex((x) => x === opt)
-      if (index > 0) {
-        this.subscriptionQuery.splice(index, 1)
-      }
-    }
-  }
-
-  // can be overwritten by consumer!
-  onError(err: Error) {
-    this.bridgeErrors.push(err)
-  }
-  // can be overwritten by consumer!
-  onClose(err: string | Error | undefined) {}
-
-  handleIncomingMessage(msg: Message) {
+  protected handleIncomingMessage(msg: Message) {
+    //console.log("handleIncomingMessage", msg)
     this.history.push(msg)
-    if (this.subscriptionTrackIdList[msg.trackId]) {
-      if (msg.type === MessageType.Error) {
-        this.subscriptionTrackIdList[msg.trackId].onError?.(msg.payload, msg)
-      } else {
-        this.subscriptionTrackIdList[msg.trackId].onSuccess?.(msg.payload, msg)
-      }
-      delete this.subscriptionTrackIdList[msg.trackId]
-    }
     if (msg.type === MessageType.Event) {
       this.receiveEventMessage(msg)
+      return
+    }
+    const trackMsg = this.subscribedTrackIdMap[msg.trackId]
+    if (trackMsg) {
+      if (msg.type === MessageType.Error) {
+        trackMsg.onError?.({
+          reason: msg.payload,
+          responseMessage: msg,
+        })
+      } else {
+        trackMsg.onSuccess?.({
+          response: msg.payload,
+          responseMessage: msg,
+        })
+      }
+      delete this.subscribedTrackIdMap[msg.trackId]
     }
   }
 
   protected receiveEventMessage(eventMsg: Message) {
-    if (this.subscriptionEventList[eventMsg.name]) {
-      this.subscriptionEventList[eventMsg.name].forEach((callback) =>
+    if (this.subscribedEventListMap[eventMsg.name]) {
+      this.subscribedEventListMap[eventMsg.name].forEach((callback) =>
         callback(eventMsg.payload, eventMsg),
       )
     }
-    this.subscriptionQuery
-      .filter((x) => x.triggers?.some((x) => x === eventMsg.name) ?? false)
-      .forEach((x) => {
-        const msg = this.createQueryMessage(x.name, x.query)
-        this.sendMessage(msg, x.onUpdate, x.onError)
-      })
   }
 }

@@ -1,5 +1,5 @@
-import { Message } from "./Message"
-import { MessageBridgeServiceBase } from "./MessageBridgeServiceBase"
+import { MessageBridgeServiceBase } from "../MessageBridgeServiceBase"
+import { Message } from "../MessageBridgeTypes"
 
 export class WebsocketMessageBridgeService extends MessageBridgeServiceBase {
   socket?: WebSocket

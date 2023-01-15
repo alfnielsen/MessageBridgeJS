@@ -1,14 +1,18 @@
-import * as signalR from "@microsoft/signalr"
-import { Message } from "./Message"
+import { HubConnectionBuilder } from "@microsoft/signalr"
 import { IHttpConnectionOptions } from "@microsoft/signalr/src/IHttpConnectionOptions"
-import { MessageBridgeServiceBase } from "./MessageBridgeServiceBase"
+import { MessageBridgeServiceBase } from "../MessageBridgeServiceBase"
+import { Message } from "../MessageBridgeTypes"
 
 export class SignalRMessageBridgeService extends MessageBridgeServiceBase {
+  connection?: signalR.HubConnection
   connect(options: IHttpConnectionOptions = {}): Promise<void> {
-    this.connection = new signalR.HubConnectionBuilder()
+    this.connection = new HubConnectionBuilder()
       .withUrl(this.wsUri, options)
       .withAutomaticReconnect()
       .build()
+    if (!this.connection) {
+      throw new Error("Failed to create SignalR connection")
+    }
     this.connection.on("ReceiveMessage", (messageString: string | Message) => {
       this.onMessage(messageString)
     })

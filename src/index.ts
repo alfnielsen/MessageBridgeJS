@@ -1,5 +1,4 @@
-export { SignalRMessageBridgeService as MessageBridgeService } from "./SignalRMessageBridgeService"
-export { WebsocketMessageBridgeService } from "./WebsocketMessageBridgeService"
+export { SignalRMessageBridgeService as MessageBridgeService } from "./connection-protocols/SignalRMessageBridgeService"
+export { WebsocketMessageBridgeService } from "./connection-protocols/WebsocketMessageBridgeService"
 export * from "./MessageBridgeServiceBase"
-export * from "./Message"
-export * from "./MessageBridgeInterfaces"
+export * from "./MessageBridgeTypes"

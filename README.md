@@ -16,21 +16,26 @@ Most used commands:
 - sendCommand
 - sendQuery
 - sendEvent _(It's called send because it will send it to the backend - not fire it! )_
-- subscribeQuery
 - subscribeEvent
 - connect
 
 Underlying commands _(can sometime be used to fetch trackId ect...)_
 
 - sendMessage
+- onError _(override to handle errors)_
+- onClose _(override to handle close)_
+
+Helper commands _(advanced use)_
+
 - createCommandMessage
 - createQueryMessage
 - createEventMessage
-- onError // override to handle errors
-- onClose // override to handle close
+- createMessage
+- createMessageFromDto
 
-Protected commands
+Protected commands _(advanced use)_
 
+- onMessage
 - handleIncomingMessage
 - receiveEventMessage
 - internalSendMessage
@@ -44,30 +49,49 @@ await bridge.connect()
 
 // Command
 const command: ICreateTodo = { name: "Remember to", priority: "low" }
-bridge.sendCommand({
-  module: "base-module", // module is optional (in version 0.1.x)
-  name: "CreateTodo",
-  payload: command,
-  onSuccess: (id: number) => {
-    alert(`Todo created with id: ${id}`)
-  },
-  //onError (handler error response)
+const { response: id } = await bridge.sendCommand({
+  module: "todo", // module is optional (But can be used to track different microservices etc..)
+  name: "CreateTodo", // name of the command
+  payload: command, // payload (arguments) of the command
 })
+alert(`Todo created with id: ${id}`)
+
 // Query (subscribe)
-bridge.subscribeQuery({
-  name: "GetTotoItem",
-  query: { id: 25 },
-  triggers: ["UpdatedTotoIem"],
-  onUpdate: (todo: ITodoItem) => {
-    // update ui
-  },
+const todo = await bridge.sendQuery({
+  name: "GetTotoItem", // name of the query
+  payload: { id: 25 }, // payload (arguments) of the query
 })
 
 // Query (subscribe)
-bridge.subscribeEvent({
-  name: "UpdatedTotoIem",
-  onEvent: (todo: ITodoItem) => {
-    // do stoff..
+const unsub = bridge.subscribeEvent({
+  name: "TotoItemUpdated", // name of the event
+  onEvent(todo: ITodoItem) {
+    // event handler
+  },
+})
+```
+
+Callback options:
+
+```ts
+// sendCommand and sendQuery can take a callback instead of awaiting the response
+bridge.sendCommand({
+  name: "CreateTodo",
+  payload: command,
+  onSucess(id) {
+    alert(`Todo created with id: ${id}`)
+  },
+  onError(error, errorBridgeMessage) {
+    // if the server send an bridge error message
+    alert(`Error: ${error}`)
+  },
+})
+// or a combination to handle errors without try/catch
+const { response: id } = await bridge.sendCommand({
+  name: "CreateTodo",
+  payload: command,
+  onError(error) {
+    // handle error
   },
 })
 ```
