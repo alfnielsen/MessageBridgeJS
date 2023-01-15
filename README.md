@@ -19,6 +19,12 @@ Most used commands:
 - subscribeEvent
 - connect
 
+Tracked versions of requests (They resolve the promise with a full RequestResponse<TRequest,TResponse>)  
+It includes the request and response messages (So you can track which request data what used to get the response)
+
+- sendCommandTracked
+- sendQueryTracked
+
 Underlying commands _(can sometime be used to fetch trackId ect...)_
 
 - sendMessage
@@ -48,21 +54,22 @@ const bridge = new MessageBridgeService("ws://localhost:8080")
 await bridge.connect()
 
 // Command
-const command: ICreateTodo = { name: "Remember to", priority: "low" }
-const { response: id } = await bridge.sendCommand({
+const command = { name: "Remember to", priority: "low" } as ICreateTodo
+const id = await bridge.sendCommand({
   module: "todo", // module is optional (But can be used to track different microservices etc..)
   name: "CreateTodo", // name of the command
   payload: command, // payload (arguments) of the command
 })
-alert(`Todo created with id: ${id}`)
+console.log(`Todo created with id: ${id}`)
 
-// Query (subscribe)
+// Query
 const todo = await bridge.sendQuery({
   name: "GetTotoItem", // name of the query
   payload: { id: 25 }, // payload (arguments) of the query
 })
+console.log(`Todo with id:25 has title: ${todo.title}`)
 
-// Query (subscribe)
+// Subscribe Event
 const unsub = bridge.subscribeEvent({
   name: "TotoItemUpdated", // name of the event
   onEvent(todo: ITodoItem) {
@@ -79,20 +86,64 @@ bridge.sendCommand({
   name: "CreateTodo",
   payload: command,
   onSucess(id) {
-    alert(`Todo created with id: ${id}`)
+    console.log(`Todo created with id: ${id}`)
   },
-  onError(error, errorBridgeMessage) {
+  onError(error) {
     // if the server send an bridge error message
-    alert(`Error: ${error}`)
+    console.log(`Error: ${error}`)
   },
 })
 // or a combination to handle errors without try/catch
-const { response: id } = await bridge.sendCommand({
+const id = await bridge.sendCommand({
   name: "CreateTodo",
   payload: command,
   onError(error) {
     // handle error
   },
+})
+```
+
+Multiple parallel requests:
+
+```ts
+let promise1 = bridge.sendCommand({
+  name: "CreateTodo",
+  payload: command,
+})
+let promise2 = bridge.sendCommand({
+  name: "CreateTodoNode",
+  payload: commandNote,
+})
+const [todo, note] = await Promise.all([promise1, promise2])
+```
+
+Tracked requests:
+
+```ts
+// base:
+const { response: todoItems, request: searchOptions } = await bridge.sendQueryTracked({
+  name: "GetTotoItem",
+  payload: someSearchOptions,
+})
+// parallel:
+// do multiple searches:
+let queryPromise1 = searchOptions.map((searchOptions) =>
+  bridge.sendQueryTracked({
+    name: "GetTotoItem",
+    payload: { searchTerm: "se" },
+  }),
+)
+let queryPromise2 = searchOptions.map((searchOptions) =>
+  bridge.sendQueryTracked({
+    name: "GetTotoItem",
+    payload: { searchTerm: "se" },
+  }),
+)
+const allResults = await Promise.all([queryPromise1, queryPromise2])
+allResults.forEach(({ response, request }) => {
+  console.log(
+    `Search with '${request.payload.searchTerm}' returned ${response.length} items`,
+  )
 })
 ```
 
@@ -105,28 +156,6 @@ const { response: id } = await bridge.sendCommand({
 ```
 > yarn add message-bridge-js
 ```
-
-### CDN
-
-Use directly in a browser: (CDN)
-
-The dependencies (@microsoft/signalr and uuid) most be added before this script
-
-```html
-<!-- @microsoft/signalr -->
-<script
-  src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/5.0.4/signalr.min.js"
-  integrity="sha512-h0xYAfohLfIHQffhHCtxoKLpHronITi3ocJHetJf4K1YCeCeEwAFA3gYsIYCrzFSHftQwXALtXvZIw51RoJ1hw=="
-  crossorigin="anonymous"
-></script>
-<!-- uuid -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
-<!-- message-bridge-js -->
-<script src="https://unpkg.com/message-bridge-js/cdn-build/MessageBridgeService.js"></script>
-```
-
-_For a specific version use: (Not updated since version 0.1.5 !):_
-https://unpkg.com/message-bridge-js@0.0.1/cdn-build/MessageBridgeService.js
 
 ### Backend
 
@@ -200,3 +229,42 @@ and other backends like Javascript (typescript) or Java can be created in the fu
 ### Flow diagram
 
 ![Flow-diagram](docs/CommandServiceDiagram.jpg)
+
+# Getting started
+
+You can use the included **ClientSideMessageBridgeService** and **InMemoryClientSideServer**
+to get started quickly (and later change the bridge to the **SignalR** or **Websocket** version).
+
+```ts
+// TestServer.ts
+import { InMemoryClientSideServer } from "../src/connection-protocols/InMemoryClientSideServer"
+import { RequestType, Store } from "./TestInterfaces"
+
+let server = new InMemoryClientSideServer<Store>()
+server.store.todos = [
+  { id: 1, title: "todo1" },
+  { id: 2, title: "todo2" },
+  { id: 3, title: "todo3" },
+]
+server.addCommand(RequestType.UpdateTodoItemCommand, (opt) => {
+  const todo = server.store.todos.find((t) => t.id === opt.requestMessage.payload.id)
+  if (todo) {
+    todo.title = opt.requestMessage.payload.title
+  }
+  setTimeout(() => {
+    opt.fireEvent(RequestType.TodoItemUpdated, {
+      id: opt.requestMessage.payload.id,
+      title: opt.requestMessage.payload.title,
+    })
+  }, 10)
+  return { done: true }
+})
+server.addQuery(RequestType.GetTodoItemQuery, (opt) => {
+  const items = server.store.todos.filter((t) =>
+    t.title.toLowerCase().includes(opt.requestMessage.payload.search.toLowerCase()),
+  )
+  return { items }
+})
+
+export { server as testServer }
+```

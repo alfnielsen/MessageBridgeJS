@@ -23,9 +23,15 @@ export function createMessage<TPayload = any, TSchema = any>(
   >,
 ): Message<TPayload, TSchema> {
   return {
-    ...opt,
+    name: opt.name,
+    payload: opt.payload,
+    type: opt.type,
+    // optionals
     direction: opt.direction ?? MessageDirection.ToClient,
     trackId: opt.trackId ?? v4(),
+    module: opt.module,
+    schema: opt.schema,
+    // alway created
     created: new Date().toISOString(),
     isError: opt.type === MessageType.Error,
   }

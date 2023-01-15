@@ -22,11 +22,16 @@ export class SignalRMessageBridgeService extends MessageBridgeServiceBase {
     return this.connection
       .start()
       .then(() => {
-        this.connected = true
+        this.onConnect()
       })
       .catch((err: Error) => {
         this.onError(err)
       })
+  }
+
+  close() {
+    this.connection?.stop()
+    this.onClose()
   }
 
   sendNetworkMessage(msg: Message) {

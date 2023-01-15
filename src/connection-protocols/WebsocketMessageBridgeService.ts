@@ -12,16 +12,23 @@ export class WebsocketMessageBridgeService extends MessageBridgeServiceBase {
       this.onMessage(messageString)
     })
     this.socket.addEventListener("close", (event) => {
-      this.onClose(event.reason)
+      this.onClose(event.reason, event)
+    })
+    this.socket.addEventListener("error", (event) => {
+      this.onError(event, event)
     })
 
     return new Promise<void>((resolve, reject) => {
       // Connection opened
       this.socket?.addEventListener("open", (event) => {
-        this.connected = true
+        this.onConnect()
         resolve()
       })
     })
+  }
+  close(): void {
+    this.socket?.close()
+    this.onClose()
   }
 
   sendNetworkMessage(msg: Message) {

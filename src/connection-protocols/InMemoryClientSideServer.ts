@@ -1,20 +1,29 @@
 import { createMessage } from "../MessageBridgeHelper"
-import { MessageBridgeServiceBase } from "../MessageBridgeServiceBase"
 import { Message, MessageDirection, MessageType } from "../MessageBridgeTypes"
 import { MessageBridgeClientServer } from "./ClientSideMessageBridgeService"
 
+export type RequestErrorResponse = {
+  message: string
+  request?: Message | string
+  stack?: string
+  error?: unknown
+}
+
 export type RequestHandler<TRequest = any, TResponse = any, TStore = any> = (opt: {
   requestMessage: Message<TRequest, TResponse>
+  request: TRequest
   store: TStore
-  fireEvent: (name: string, payload: any) => void
-  sendError: (reason: any) => void
-}) => TResponse
+  event: (name: string, payload: any) => void
+  error: (reason: any) => void
+  response: (response: TResponse) => void
+}) => void
 
 export type RequestEventHandler<TRequest = any, TResponse = any, TStore = any> = (opt: {
   requestMessage: Message<TRequest, TResponse>
+  request: TRequest
   store: TStore
-  fireEvent: (name: string, payload: any) => void
-  sendError: (reason: any) => void
+  event: (name: string, payload: any) => void
+  error: (reason: any) => void
 }) => void
 
 export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServer {
@@ -33,19 +42,21 @@ export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServ
     }
   }
 
-  sendMessage?: (msg: Message) => void
+  sendMessage?: (msg: Message<RequestErrorResponse>) => void
 
   connect(sendMessage: (msg: Message) => void) {
     this.sendMessage = sendMessage
   }
 
-  sendError(payload: any) {
+  sendError(payload: RequestErrorResponse, trackId?: string) {
     const errorMsg = createMessage({
+      trackId,
       type: MessageType.Error,
       name: "Error",
       payload: payload,
       direction: MessageDirection.ToClient,
     })
+    //console.log("SERVER: sendError", errorMsg)
     this.sendMessage?.(errorMsg)
   }
 
@@ -57,6 +68,7 @@ export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServ
       payload,
       direction: MessageDirection.ToClient,
     })
+    //console.log("SERVER: sendResponse", responseMessage)
     this.sendMessage?.(responseMessage)
   }
 
@@ -71,6 +83,7 @@ export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServ
   }
 
   onMessage(requestMessage: Message | string) {
+    //console.log("SERVER: onMessage", requestMessage)
     if (typeof requestMessage === "string") {
       try {
         requestMessage = JSON.parse(requestMessage) as Message
@@ -78,6 +91,8 @@ export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServ
         this.sendError({
           message: `Error parsing message: ${e}`,
           request: requestMessage,
+          error: e,
+          stack: (e as any)?.stack,
         })
         console.error("Error parsing message", e)
         return
@@ -85,37 +100,39 @@ export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServ
     }
     if (requestMessage.type === "Command") {
       if (!this.commands[requestMessage.name]) {
-        this.sendError({
-          message: `Command ${requestMessage.name} not found (Register it with addCommand)`,
-          request: requestMessage,
-        })
+        this.sendError(
+          {
+            message: `Command ${requestMessage.name} not found (Register it with addCommand)`,
+            request: requestMessage,
+          },
+          requestMessage.trackId,
+        )
         return
       }
       this.serverHandleCommand(requestMessage)
     }
     if (requestMessage.type === "Query") {
       if (!this.queries[requestMessage.name]) {
-        this.sendError({
-          message: `Query ${requestMessage.name} not found (Register it with addQuery)`,
-          request: requestMessage,
-        })
+        this.sendError(
+          {
+            message: `Query ${requestMessage.name} not found (Register it with addQuery)`,
+            request: requestMessage,
+          },
+          requestMessage.trackId,
+        )
         return
       }
       this.serverHandleQuery(requestMessage)
     }
     if (requestMessage.type === "Event") {
       if (!this.eventListeners[requestMessage.name]) {
-        this.sendError({
-          message: `Event ${requestMessage.name} not found (Register it with addEvent)`,
-          request: requestMessage,
-        })
-        const errorMsg = createMessage({
-          type: MessageType.Error,
-          name: requestMessage.name,
-          payload: `Event ${requestMessage.name} not found (Register it with addEvent)`,
-          direction: MessageDirection.ToClient,
-        })
-        this.sendMessage?.(errorMsg)
+        this.sendError(
+          {
+            message: `Event ${requestMessage.name} not found (Register it with addEvent)`,
+            request: requestMessage,
+          },
+          requestMessage.trackId,
+        )
         return
       }
       this.serverHandleEvent(requestMessage)
@@ -132,21 +149,34 @@ export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServ
       )
     }
     const sendError = (reason: any) => {
-      this.sendError({
-        message: reason,
-        request: requestMessage,
-      })
+      this.sendError(
+        {
+          message: reason,
+          request: requestMessage,
+        },
+        requestMessage.trackId,
+      )
     }
     const fireEvent = (name: string, payload: any) => {
       this.sendEvent(name, payload)
     }
-    const result = handler({
-      requestMessage: requestMessage,
-      store: this.store,
-      sendError,
-      fireEvent,
-    })
-    sendResponse(result)
+    try {
+      handler({
+        requestMessage: requestMessage,
+        request: requestMessage.payload,
+        store: this.store,
+        error: sendError,
+        event: fireEvent,
+        response: sendResponse,
+      })
+    } catch (e) {
+      sendError({
+        message: `Error in command handler for '${requestMessage.name}'`,
+        requestMessage: requestMessage,
+        error: e,
+        stack: (e as any)?.stack,
+      })
+    }
   }
 
   serverHandleQuery(requestMessage: Message) {
@@ -160,40 +190,46 @@ export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServ
       )
     }
     const sendError = (reason: any) => {
-      this.sendError({
-        message: reason,
-        request: requestMessage,
-      })
-    }
-    const fireEvent = (name: string, payload: any) => {
-      this.sendEvent(name, payload)
-    }
-    const result = handler({
-      requestMessage: requestMessage,
-      store: this.store,
-      sendError,
-      fireEvent,
-    })
-    if (result) {
-      sendResponse(result)
-    }
-  }
-  serverHandleEvent(requestMessage: Message) {
-    const handler = this.eventListeners[requestMessage.name]
-    const sendError = (reason: any) => {
-      this.sendError({
-        message: reason,
-        request: requestMessage,
-      })
+      this.sendError(
+        {
+          message: reason,
+          request: requestMessage,
+        },
+        requestMessage.trackId,
+      )
     }
     const fireEvent = (name: string, payload: any) => {
       this.sendEvent(name, payload)
     }
     handler({
       requestMessage: requestMessage,
+      request: requestMessage.payload,
       store: this.store,
-      sendError,
-      fireEvent,
+      error: sendError,
+      event: fireEvent,
+      response: sendResponse,
+    })
+  }
+  serverHandleEvent(requestMessage: Message) {
+    const handler = this.eventListeners[requestMessage.name]
+    const sendError = (reason: any) => {
+      this.sendError(
+        {
+          message: reason,
+          request: requestMessage,
+        },
+        requestMessage.trackId,
+      )
+    }
+    const fireEvent = (name: string, payload: any) => {
+      this.sendEvent(name, payload)
+    }
+    handler({
+      requestMessage: requestMessage,
+      request: requestMessage.payload,
+      store: this.store,
+      error: sendError,
+      event: fireEvent,
     })
   }
   // In memory message bridge service

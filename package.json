@@ -17,7 +17,8 @@
   "unpkg": "./dist/index.umd.js",
   "source": "src/index.ts",
   "scripts": {
-    "test": "yarn jest",
+    "test": "yarn jest --runInBand",
+    "test:errors": "yarn jest -i tests/handleErrors.test.ts",
     "build": "microbundle --format umd,cjs,es",
     "publish": "npm publish"
   },

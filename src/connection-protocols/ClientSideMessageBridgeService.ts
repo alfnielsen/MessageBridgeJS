@@ -9,12 +9,21 @@ export type MessageBridgeClientServer = {
 
 export class ClientSideMessageBridgeService extends MessageBridgeServiceBase {
   server?: MessageBridgeClientServer
+  setServer(server: MessageBridgeClientServer) {
+    this.server = server
+  }
   connect() {
+    if (!this.server) {
+      throw new Error("No server set")
+    }
     this.server?.connect((msg) => {
       this.onMessage(msg)
+      this.onConnect()
     })
-    this.connected = true
     return Promise.resolve()
+  }
+  close() {
+    this.onClose()
   }
   sendNetworkMessage(msg: Message) {
     setTimeout(() => {

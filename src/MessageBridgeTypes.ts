@@ -7,6 +7,19 @@ export type OmitAndOptional<
   TOpt extends keyof Omit<T, TOmit>,
 > = Pick<Partial<Omit<T, TOmit>>, TOpt> & Omit<Omit<T, TOmit>, TOpt>
 
+// bridge
+
+export type BridgeOptions = {
+  onMessage?: (msg: Message) => void
+  onSend?: (msg: Message) => void
+  onError?: (err?: unknown /*Error*/, eventOrData?: unknown) => void
+  onClose?: (err?: unknown /*Error*/, eventOrData?: unknown) => void
+  onConnect?: () => void
+  avoidThrowOnNonTrackedError?: boolean
+  throwOnTrackedError?: boolean
+  timeout?: number
+}
+
 // enums (These are runtime enums)
 export enum MessageType {
   Command = "Command",
@@ -36,22 +49,46 @@ export type Message<TPayload = any, TSchema = any> = {
 }
 
 // Request
-export type RequestResponse<TRequest, TResponse> = {
+export type RequestResponse<TRequest, TResponse, TError = any> = {
   response: TResponse
   request: TRequest
   responseMessage: Message<TResponse>
   requestMessage: Message<TRequest>
+  isError?: boolean
+  error?: TError
+  errorMessage?: Message<TError>
+}
+
+export type RequestOptionsTracked<TRequest, TResponse, TError = any> = {
+  name: string
+  payload: TRequest
+  onSuccess?: SubscribeResponseTracked<TRequest, TResponse>
+  onError?: SubscribeErrorResponseTracked<TRequest, TResponse, TError>
+  module?: string
+  timeout?: number
+}
+
+export type SendMessageOptions<
+  TRequest = any,
+  TResponse = any,
+  TError = any,
+  TSchema = any,
+> = {
+  requestMessage: Message<TRequest, TSchema>
+  onSuccess?: SubscribeResponseTracked<TRequest, TResponse>
+  onError?: SubscribeErrorResponseTracked<TRequest, TResponse, TError>
+  timeout?: number
 }
 
 export type SubscribeResponseAsync<TRequest, TResponse> = (
   opt: RequestResponse<TRequest, TResponse>,
 ) => Promise<RequestResponse<TRequest, TResponse>>
 
-export type SubscribeResponse<TRequest, TResponse> = (
+export type SubscribeResponseTracked<TRequest, TResponse> = (
   opt: RequestResponse<TRequest, TResponse>,
 ) => void
 
-export type SubscribeResponseWithCatch<TRequest, TResponse, TError = any> = {
+export type SubscribeResponseWithCallbacks<TRequest, TResponse, TError = any> = {
   onSuccess?: SubscribeResponseAsync<TRequest, TResponse>
   onError?: SubscribeErrorAsync<TError, TRequest>
   requestMessage: Message<TRequest>
@@ -85,24 +122,28 @@ export type SubscribeError<TError = any, TRequest = any> = (
   opt: RequestMaybeNoError<TError, TRequest>,
 ) => void
 
+export type SubscribeErrorResponseTracked<
+  TRequest = any,
+  TResponse = any,
+  TError = any,
+> = (opt: RequestResponse<TRequest, TResponse, TError>) => void
+
 // Internal Tracked
 // used by tracking (No return value '=> void', it uses promise 'resolve')
-export type InternalTrackedSubscribeResponse<TResponse> = (opt: {
-  response: TResponse
-  responseMessage: Message<TResponse>
-}) => void
+export type InternalTrackedSubscribeResponse<TResponse> = (
+  responseMessage: Message<TResponse>,
+) => void
 
-export type InternalTrackedSubscribeError<TError> = (opt: {
-  reason: TError | undefined
-  responseMessage: Message<TError> | undefined
-}) => void
+export type InternalTrackedSubscribeError<TError> = (
+  responseMessage: Message<TError> | undefined,
+) => void
 
 export type InternalTrackedSubscribeResponseWithCatch<
   TRequest,
   TResponse,
   TError = any,
 > = {
-  onSuccess?: InternalTrackedSubscribeResponse<TResponse>
-  onError?: InternalTrackedSubscribeError<TError>
+  successTrack?: InternalTrackedSubscribeResponse<TResponse>
+  errorTrack?: InternalTrackedSubscribeError<TError>
   requestMessage: Message<TRequest>
 }

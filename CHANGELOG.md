@@ -3,7 +3,7 @@
 More or less a rewrite of internals, but the API is almost the same.
 
 - Add promise pattern (in addition to callback)\*
-- Add requestMessage to response/resolve callback\*
+- Add requestMessage to response/resolve callback (Tracked version)\*
 - Add full flow test with async server call
 - Removed _subscribeQuery\*\*_
 
@@ -17,19 +17,27 @@ _There are en example in the example folder for subscribe query is needed_
 bridge.sendQuery({ name, payload, onSuccess, onError })
 
 // new option:
-const { response, request } = await bridge.sendQuery({
+const response = await bridge.sendQuery({
   name,
   payload,
   onSuccess,
   onError,
 })
+// new option tracked:
+const { response, request, responseMessage, requestMessage } =
+  await bridge.sendQueryTracked({
+    name,
+    payload,
+    onSuccess,
+    onError,
+  })
 ```
 
 ### Breaking changes
 
 Almost no changes to the base: **sendQuery**, **sendCommand**, **sendEvent**, **subscribeEvent**
 
-But response-methods now includes the request that spawned them (So the old 2 arg is now 3 arg)
+But onSuccess second argument is now a full RequestResponse<TRequest,TResponse>)
 
 ```ts
 // before
@@ -42,10 +50,16 @@ bridge.sendQuery({
 bridge.sendQuery({
   name,
   payload,
-  onSuccess(response, request, responseMsg, requestMsg) {},
+  onSuccess(response, { response, request, responseMsg, requestMsg }) {},
 })
-// or the new option:
-const { response, request, responseMsg, requestMsg } = await bridge.sendQuery({
+// or the new tracked:
+bridge.sendQueryTracked({
+  name,
+  payload,
+  onSuccess({ response, request, responseMsg, requestMsg }) {},
+})
+// or the new tracked promise pattern:
+const { response, request, responseMsg, requestMsg } = await bridge.sendQueryTracked({
   name,
   payload,
 })

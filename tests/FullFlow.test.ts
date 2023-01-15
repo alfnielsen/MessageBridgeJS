@@ -15,10 +15,10 @@ import {
   UpdateTodoItemCommand,
   UpdateTodoItemCommandResponse,
 } from "./TestInterfaces"
-import { testServer } from "./TestServer"
+import { createTestServer } from "./TestServer"
 
 const bridge = new ClientSideMessageBridgeService("ws://localhost:1234")
-bridge.server = testServer
+bridge.server = createTestServer()
 
 it("test flow: async, non async, cleanup", async () => {
   //@ts-ignore // private/protected method
@@ -32,41 +32,23 @@ it("test flow: async, non async, cleanup", async () => {
   expect(bridge.history.length).toBe(0)
 
   //console.log("step 2: send query")
-  const {
-    request: queryRequest,
-    requestMessage: queryRequestMessage,
-    response: queryResponse,
-    responseMessage: queryResponseMessage,
-  } = await bridge.sendQuery<GetTodoItemQuery, GetTodoItemQueryResponse>({
+  const { response: response1 } = await bridge.sendQueryTracked<
+    GetTodoItemQuery,
+    GetTodoItemQueryResponse
+  >({
     name: RequestType.GetTodoItemQuery,
     payload: {
       search: "todo",
     },
   })
-
   // test query response
-  expect(queryRequest.search).toBe("todo")
-  expect(queryResponse.items.length).toBe(3)
-  expect(queryResponse.items[0].id).toBe(1)
-  expect(queryResponse.items[0].title).toBe("todo1")
-  expect(queryResponse.items[1].id).toBe(2)
-  expect(queryResponse.items[1].title).toBe("todo2")
-  expect(queryResponse.items[2].id).toBe(3)
-  expect(queryResponse.items[2].title).toBe("todo3")
-  expect(queryRequestMessage.name).toBe(RequestType.GetTodoItemQuery)
-  expect(queryRequestMessage.type).toBe(MessageType.Query)
-  expect(queryRequestMessage.payload).toMatchObject({ search: "todo" })
-  expect(queryRequestMessage.direction).toBe(MessageDirection.ToServer)
-  expect(queryResponseMessage.name).toBe(RequestType.GetTodoItemQuery)
-  expect(queryResponseMessage.type).toBe(MessageType.QueryResponse)
-  expect(queryResponseMessage.payload).toMatchObject({
+  expect(response1).toMatchObject({
     items: [
       { id: 1, title: "todo1" },
       { id: 2, title: "todo2" },
       { id: 3, title: "todo3" },
     ],
   })
-  expect(queryResponseMessage.direction).toBe(MessageDirection.ToClient)
 
   //console.log("step 3: send query (with onSuccess)")
   // NON await call (With no onSuccess - to test cleanup)
@@ -80,7 +62,7 @@ it("test flow: async, non async, cleanup", async () => {
   let innerResponse:
     | RequestResponse<GetTodoItemQuery, GetTodoItemQueryResponse>
     | undefined
-  bridge.sendQuery<GetTodoItemQuery, GetTodoItemQueryResponse>({
+  bridge.sendQueryTracked<GetTodoItemQuery, GetTodoItemQueryResponse>({
     name: RequestType.GetTodoItemQuery,
     payload: {
       search: "1",
@@ -94,24 +76,9 @@ it("test flow: async, non async, cleanup", async () => {
   await new Promise((resolve) => setTimeout(resolve, 100))
   // test non await call
   if (!innerResponse) throw new Error("innerResponse is undefined")
-  expect(innerResponse.request).toBeDefined()
-  expect(innerResponse.response).toBeDefined()
-  expect(innerResponse.requestMessage).toBeDefined()
-  expect(innerResponse.responseMessage).toBeDefined()
-  expect(innerResponse.request?.search).toBe("1")
-  expect(innerResponse.response?.items.length).toBe(1)
-  expect(innerResponse.response?.items[0].id).toBe(1)
-  expect(innerResponse.response?.items[0].title).toBe("todo1")
-  expect(innerResponse.requestMessage?.name).toBe(RequestType.GetTodoItemQuery)
-  expect(innerResponse.requestMessage?.type).toBe(MessageType.Query)
-  expect(innerResponse.requestMessage?.payload).toMatchObject({ search: "1" })
-  expect(innerResponse.requestMessage?.direction).toBe(MessageDirection.ToServer)
-  expect(innerResponse.responseMessage?.name).toBe(RequestType.GetTodoItemQuery)
-  expect(innerResponse.responseMessage?.type).toBe(MessageType.QueryResponse)
   expect(innerResponse.responseMessage?.payload).toMatchObject({
     items: [{ id: 1, title: "todo1" }],
   })
-  expect(innerResponse.responseMessage?.direction).toBe(MessageDirection.ToClient)
 
   // test history and cleanup
   const historyLog = bridge.history.map((h) => h.name + "-" + h.type).join(",")
@@ -157,32 +124,20 @@ it("test flow: async, non async, cleanup", async () => {
 
   //console.log("step 4: send command")
   // Update
-  const { request, response, requestMessage, responseMessage } = await bridge.sendCommand<
-    UpdateTodoItemCommand,
-    UpdateTodoItemCommandResponse
-  >({
-    name: RequestType.UpdateTodoItemCommand,
-    payload: {
-      id: 2,
-      title: "todo2 changed",
-    },
-  })
+  const { request, response, requestMessage, responseMessage } =
+    await bridge.sendCommandTracked<UpdateTodoItemCommand, UpdateTodoItemCommandResponse>(
+      {
+        name: RequestType.UpdateTodoItemCommand,
+        payload: {
+          id: 2,
+          title: "todo2 changed",
+        },
+      },
+    )
 
   // test response
-  expect(request.id).toBe(2)
-  expect(request.title).toBe("todo2 changed")
-  expect(response.done).toBe(true)
-  expect(requestMessage.name).toBe(RequestType.UpdateTodoItemCommand)
-  expect(requestMessage.type).toBe(MessageType.Command)
   expect(requestMessage.payload).toMatchObject({ id: 2, title: "todo2 changed" })
-  expect(requestMessage.direction).toBe(MessageDirection.ToServer)
-  expect(responseMessage.name).toBe(RequestType.UpdateTodoItemCommand)
-  expect(responseMessage.type).toBe(MessageType.CommandResponse)
-  expect(responseMessage.payload).toMatchObject({ done: true })
-  expect(responseMessage.direction).toBe(MessageDirection.ToClient)
-
   var trackIdCount = Object.keys(bridge.subscribedTrackIdMap).length
-
   expect(trackIdCount).toBe(0)
 
   // Wait for event

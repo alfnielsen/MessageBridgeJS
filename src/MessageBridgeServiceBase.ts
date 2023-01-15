@@ -3,13 +3,14 @@ import {
   MessageDirection,
   MessageType,
   RequestResponse,
-  SubscribeErrorAsync,
   SubscribeEvent,
-  SubscribeResponseAsync,
   InternalTrackedSubscribeResponseWithCatch,
   OmitAndOptional,
-  SubscribeResponse,
   SubscribeError,
+  RequestOptionsTracked,
+  BridgeOptions,
+  RequestMaybeNoError,
+  SendMessageOptions,
 } from "./MessageBridgeTypes"
 
 import {
@@ -29,11 +30,6 @@ export abstract class MessageBridgeServiceBase {
     sendingMessageFilter: undefined as undefined | string | RegExp,
   }
 
-  constructor(public wsUri: string) {}
-
-  abstract connect(options?: unknown): Promise<void>
-  abstract sendNetworkMessage(msg: Message): void
-
   subscribedTrackIdMap: {
     [trackId: string]: InternalTrackedSubscribeResponseWithCatch<any, any>
   } = {}
@@ -43,36 +39,202 @@ export abstract class MessageBridgeServiceBase {
   } = {}
 
   history: Message[] = []
-  bridgeErrors: (Error | string)[] = []
+  bridgeErrors: unknown[] /*Error*/ = []
 
-  sendMessage<TRequest = any, TResponse = any, TError = any, TSchema = any>(
-    requestMessage: Message<TRequest, TSchema>,
-    onSuccess?: SubscribeResponse<TRequest, TResponse>,
-    onError?: SubscribeError<any, TRequest>,
+  options: BridgeOptions = {}
+
+  constructor(public wsUri: string) {}
+
+  abstract connect(options?: unknown): Promise<void>
+  abstract close(): void
+  abstract sendNetworkMessage(msg: Message): void
+
+  setOptions(opt: BridgeOptions) {
+    this.options = { ...this.options, ...opt }
+  }
+
+  // the following methods can overwritten with class inheritance
+  // but should override version should call super.methodName()
+  onConnect() {
+    this.connected = true
+    this.options.onConnect?.()
+  }
+  onError(err?: unknown /*Error*/, eventOrData?: unknown) {
+    if (err !== undefined) {
+      this.bridgeErrors.push(err)
+    }
+    this.options.onError?.(err, eventOrData)
+  }
+  onClose(err?: unknown /*Error*/, eventOrData?: unknown) {
+    if (err !== undefined) {
+      this.bridgeErrors.push(err)
+    }
+    this.connected = false
+    this.options.onClose?.(err, eventOrData)
+  }
+
+  // base methods (should mostly not be overwritten)
+
+  setOptionalRequestTimeout<TRequest = any, TSchema = any>({
+    requestMessage,
+    timeout,
+    onTimeout,
+  }: {
+    requestMessage: Message<TRequest, TSchema>
+    timeout: number | undefined
+    onTimeout: SubscribeError<string, TRequest>
+  }) {
+    let reason: string
+    let timeoutMs: number | undefined
+    if (this.options.timeout !== undefined) {
+      reason = `Timeout after ${this.options.timeout}ms (Set in BridgeOptions.timeout)`
+      timeoutMs = this.options.timeout
+    }
+    if (timeout !== undefined) {
+      reason = `Timeout after ${timeout}ms (Set in RequestOptions.timeout)`
+      timeoutMs = timeout
+    }
+    if (timeoutMs === undefined) {
+      return
+    }
+    return setTimeout(() => {
+      const opt: RequestMaybeNoError<string, TRequest> = {
+        reason,
+        responseMessage: undefined,
+        request: requestMessage.payload,
+        requestMessage,
+      }
+      onTimeout(opt)
+    }, timeoutMs)
+  }
+
+  sendMessageTracked<TRequest = any, TResponse = any, TError = any, TSchema = any>(
+    opt: SendMessageOptions<TRequest, TResponse, TError, TSchema>,
   ) {
-    requestMessage.direction = MessageDirection.ToServer
-    this.internalSendMessage(requestMessage)
-
-    // add chainable promise
-    return new Promise<RequestResponse<TRequest, TResponse>>((resolve, reject) => {
-      // wrap in promise to allow async (and run chains)
-      this.subscribedTrackIdMap[requestMessage.trackId] = {
-        onSuccess(responseOpt) {
-          const opt = { ...responseOpt, request: requestMessage.payload, requestMessage }
-          onSuccess?.(opt)
-          resolve(opt)
-        },
-        onError(errorOpt) {
-          const opt = { ...errorOpt, request: requestMessage.payload, requestMessage }
-          onError?.(opt)
-          reject(opt)
-        },
-        requestMessage: requestMessage,
-      } as InternalTrackedSubscribeResponseWithCatch<TRequest, TResponse, TError>
-    }).finally(() => {
-      //console.log("finally")
-      delete this.subscribedTrackIdMap[requestMessage.trackId]
+    return new Promise<RequestResponse<TRequest, TResponse, TError>>(
+      (resolve, reject) => {
+        this.sendMessagePromiseHandler({
+          ...opt,
+          handleResponseReject: (isError, response) => {
+            if (isError) {
+              if (this.options.throwOnTrackedError) {
+                reject(response)
+              } else {
+                resolve(response)
+              }
+            } else {
+              resolve(response)
+            }
+          },
+        })
+      },
+    ).finally(() => {
+      delete this.subscribedTrackIdMap[opt.requestMessage.trackId]
     })
+  }
+
+  /**
+   * Only resolve the promise with the TResponse (not the tracked/full response)
+   * onSuccess contains the response in the first argument (and the the tracked/full response in the second argument)
+   */
+  sendMessage<TRequest = any, TResponse = any, TError = any, TSchema = any>(
+    opt: SendMessageOptions<TRequest, TResponse, TError, TSchema>,
+  ) {
+    return new Promise<TResponse>((resolve, reject) => {
+      this.sendMessagePromiseHandler({
+        ...opt,
+        handleResponseReject: (isError, response, error) => {
+          if (isError) {
+            if (this.options.avoidThrowOnNonTrackedError) {
+              //@ts-ignore (The response is not the correct type, but we ignore it)
+              resolve(error?.payload)
+            } else {
+              reject(response)
+            }
+          } else {
+            resolve(response.response)
+          }
+        },
+      })
+    })
+  }
+
+  private sendMessagePromiseHandler<
+    TRequest = any,
+    TResponse = any,
+    TError = any,
+    TSchema = any,
+  >({
+    handleResponseReject,
+    requestMessage,
+    onSuccess,
+    onError,
+    timeout,
+  }: SendMessageOptions<TRequest, TResponse, TError, TSchema> & {
+    handleResponseReject: (
+      isError: boolean,
+      response: RequestResponse<TRequest, TResponse, TError>,
+      error?: RequestMaybeNoError<any, TRequest>,
+    ) => void
+  }) {
+    requestMessage.direction = MessageDirection.ToServer
+    // handle error and timeout
+    const handleError = (errOpt: RequestMaybeNoError<any, TRequest>) => {
+      if (optionalTimeId) {
+        clearTimeout(optionalTimeId)
+      }
+      // resolve with error
+      const resolveWithError: RequestResponse<TRequest, TResponse, TError> = {
+        //@ts-ignore (The response is not the correct type, but we ignore it)
+        response: undefined,
+        //@ts-ignore (The response is not the correct type, but we ignore it)
+        responseMessage: undefined,
+        request: requestMessage.payload,
+        requestMessage,
+        isError: true,
+        error: errOpt.reason,
+        errorMessage: errOpt.responseMessage,
+      }
+      onError?.(resolveWithError)
+      handleResponseReject(true, resolveWithError, errOpt)
+    }
+    // set timeout if needed
+    const optionalTimeId = this.setOptionalRequestTimeout({
+      requestMessage,
+      timeout,
+      onTimeout: (timeoutErrorMessage) => {
+        handleError(timeoutErrorMessage)
+      },
+    })
+    // add to subscribedTrackIdMap
+    this.subscribedTrackIdMap[requestMessage.trackId] = {
+      successTrack: (responseMessage) => {
+        const opt: RequestResponse<TRequest, TResponse, TError> = {
+          response: responseMessage.payload,
+          responseMessage,
+          request: requestMessage.payload,
+          requestMessage,
+          isError: false,
+        }
+        if (optionalTimeId) {
+          clearTimeout(optionalTimeId)
+        }
+        onSuccess?.(opt)
+        handleResponseReject(false, opt, undefined)
+      },
+      errorTrack: (responseMessage) => {
+        const opt: RequestMaybeNoError<TError, TRequest> = {
+          reason: responseMessage?.payload,
+          responseMessage,
+          request: requestMessage.payload,
+          requestMessage,
+        }
+        handleError(opt)
+      },
+      requestMessage: requestMessage,
+    } as InternalTrackedSubscribeResponseWithCatch<TRequest, TResponse, TError>
+    // send message
+    this.internalSendMessage(requestMessage)
   }
 
   subscribeEvent<TResponse = any>({
@@ -94,46 +256,52 @@ export abstract class MessageBridgeServiceBase {
     }
   }
 
-  sendCommand<TRequest = any, TResponse = any, TSchema = any>({
-    name,
-    payload,
-    onSuccess,
-    onError,
-    module,
-  }: {
-    name: string
-    payload: TRequest
-    onSuccess?: SubscribeResponseAsync<TRequest, TResponse>
-    onError?: SubscribeErrorAsync<any>
-    module?: string
-  }) {
-    const msg = createCommandMessage({
-      name,
-      payload,
-      module,
+  sendCommand<TRequest = any, TResponse = any, TSchema = any>(
+    opt: RequestOptionsTracked<TRequest, TResponse>,
+  ) {
+    const msg = createCommandMessage(opt)
+    return this.sendMessage<TRequest, TResponse, TSchema>({
+      requestMessage: msg,
+      onSuccess: opt.onSuccess,
+      onError: opt.onError,
+      timeout: opt.timeout,
     })
-    return this.sendMessage<TRequest, TResponse, TSchema>(msg, onSuccess, onError)
   }
 
-  sendQuery<TRequest = any, TResponse = any, TSchema = any>({
-    name,
-    payload,
-    onSuccess,
-    onError,
-    module,
-  }: {
-    name: string
-    payload: TRequest
-    onSuccess?: SubscribeResponse<TRequest, TResponse>
-    onError?: SubscribeError<any>
-    module?: string
-  }) {
-    const msg = createQueryMessage({
-      name,
-      payload,
-      module,
+  sendCommandTracked<TRequest = any, TResponse = any, TSchema = any>(
+    opt: RequestOptionsTracked<TRequest, TResponse>,
+  ) {
+    const msg = createCommandMessage(opt)
+    return this.sendMessageTracked<TRequest, TResponse, TSchema>({
+      requestMessage: msg,
+      onSuccess: opt.onSuccess,
+      onError: opt.onError,
+      timeout: opt.timeout,
     })
-    return this.sendMessage<TRequest, TResponse, TSchema>(msg, onSuccess, onError)
+  }
+
+  sendQuery<TRequest = any, TResponse = any, TError = any, TSchema = any>(
+    opt: RequestOptionsTracked<TRequest, TResponse>,
+  ) {
+    const msg = createQueryMessage(opt)
+    return this.sendMessage<TRequest, TResponse, TError, TSchema>({
+      requestMessage: msg,
+      onSuccess: opt.onSuccess,
+      onError: opt.onError,
+      timeout: opt.timeout,
+    })
+  }
+
+  sendQueryTracked<TRequest = any, TResponse = any, TError = any, TSchema = any>(
+    opt: RequestOptionsTracked<TRequest, TResponse, TError>,
+  ) {
+    const msg = createQueryMessage(opt)
+    return this.sendMessageTracked<TRequest, TResponse, TError, TSchema>({
+      requestMessage: msg,
+      onSuccess: opt.onSuccess,
+      onError: opt.onError,
+      timeout: opt.timeout,
+    })
   }
 
   sendEvent<TPayload = any>(
@@ -148,13 +316,6 @@ export abstract class MessageBridgeServiceBase {
     this.internalSendMessage(msg)
     return msg
   }
-
-  // can be overwritten by consumer!
-  onError(err: Error) {
-    this.bridgeErrors.push(err)
-  }
-  // can be overwritten by consumer!
-  onClose(err: string | Error | undefined) {}
 
   protected onMessage(messageString: string | Message) {
     //console.log("onMessage", messageString)
@@ -182,6 +343,7 @@ export abstract class MessageBridgeServiceBase {
       }
       this.handleIncomingMessage(msg)
     } catch (e) {
+      this.onError(e as Error)
       console.log("Error in response handle for message: " + e)
     }
   }
@@ -197,12 +359,17 @@ export abstract class MessageBridgeServiceBase {
         this.debugLogger("Bridge (sendingMessage): ", msg)
       }
     }
+    this.options.onSend?.(msg)
     this.sendNetworkMessage(msg)
   }
 
   protected handleIncomingMessage(msg: Message) {
     //console.log("handleIncomingMessage", msg)
     this.history.push(msg)
+    this.options.onMessage?.(msg)
+    if (msg.type === MessageType.Error) {
+      this.onError?.(msg)
+    }
     if (msg.type === MessageType.Event) {
       this.receiveEventMessage(msg)
       return
@@ -210,15 +377,9 @@ export abstract class MessageBridgeServiceBase {
     const trackMsg = this.subscribedTrackIdMap[msg.trackId]
     if (trackMsg) {
       if (msg.type === MessageType.Error) {
-        trackMsg.onError?.({
-          reason: msg.payload,
-          responseMessage: msg,
-        })
+        trackMsg.errorTrack?.(msg)
       } else {
-        trackMsg.onSuccess?.({
-          response: msg.payload,
-          responseMessage: msg,
-        })
+        trackMsg.successTrack?.(msg)
       }
       delete this.subscribedTrackIdMap[msg.trackId]
     }
