@@ -1,6 +1,6 @@
 import { Message, RequestMaybeNoError, RequestResponse } from "../src/MessageBridgeTypes"
 import { ClientSideMessageBridgeService } from "../src/connection-protocols/ClientSideMessageBridgeService"
-import { GetTodoItemQuery, GetTodoItemQueryResponse } from "./TestInterfaces"
+import { GetTodoItemQuery, GetTodoItemQueryResponse, RequestType } from "./TestInterfaces"
 import { createTestServer } from "./TestServer"
 import { RequestErrorResponse } from "../src/connection-protocols/InMemoryClientSideServer"
 
@@ -249,5 +249,30 @@ test("error handling - tracked version - throw (throwOnTrackedError:true) - type
     errorResponse = e
   }
 
+  expect(errorResponse).toBeUndefined()
+})
+
+test("error handling - tracked version - server error", async () => {
+  await bridge.connect()
+
+  let errorResponse:
+    | RequestResponse<GetTodoItemQuery, GetTodoItemQueryResponse, RequestErrorResponse>
+    | undefined
+
+  const { error } = await bridge.sendQueryTracked<
+    GetTodoItemQuery,
+    GetTodoItemQueryResponse,
+    RequestErrorResponse
+  >({
+    name: RequestType.GetTodoItemQuery,
+    payload: { search: "1", throwError: true },
+  })
+
+  expect(error).toBeDefined()
+  if (!error) {
+    throw new Error("error should be defined")
+  }
+  expect(error.message.indexOf("ServerError(GetTodoItemQuery)")).toBe(0)
+  // We relay on the "InMemoryClientSideServer" response here and it's RequestErrorResponse
   expect(errorResponse).toBeUndefined()
 })

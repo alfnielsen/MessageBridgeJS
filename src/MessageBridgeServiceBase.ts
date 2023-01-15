@@ -195,6 +195,7 @@ export abstract class MessageBridgeServiceBase {
         error: errOpt.reason,
         errorMessage: errOpt.responseMessage,
       }
+      this.onError(resolveWithError)
       onError?.(resolveWithError)
       handleResponseReject(true, resolveWithError, errOpt)
     }
@@ -367,9 +368,9 @@ export abstract class MessageBridgeServiceBase {
     //console.log("handleIncomingMessage", msg)
     this.history.push(msg)
     this.options.onMessage?.(msg)
-    if (msg.type === MessageType.Error) {
-      this.onError?.(msg)
-    }
+
+    let errorHandled = msg.type !== MessageType.Error
+
     if (msg.type === MessageType.Event) {
       this.receiveEventMessage(msg)
       return
@@ -378,10 +379,15 @@ export abstract class MessageBridgeServiceBase {
     if (trackMsg) {
       if (msg.type === MessageType.Error) {
         trackMsg.errorTrack?.(msg)
+        errorHandled = true
       } else {
         trackMsg.successTrack?.(msg)
       }
       delete this.subscribedTrackIdMap[msg.trackId]
+    }
+
+    if (!errorHandled) {
+      this.onError?.(msg)
     }
   }
 

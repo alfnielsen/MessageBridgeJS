@@ -18,10 +18,14 @@ export type UpdateTodoItemCommandResponse = {
 export type UpdateTodoItemCommand = {
   id: number
   title: string
+  throwError?: boolean
+  sleep?: number
 }
 export type GetTodoItemQueryResponse = {
   items: TodoItem[]
 }
 export type GetTodoItemQuery = {
   search: string
+  throwError?: boolean
+  sleep?: number
 }

@@ -17,8 +17,11 @@
   "unpkg": "./dist/index.umd.js",
   "source": "src/index.ts",
   "scripts": {
-    "test": "yarn jest --runInBand",
-    "test:errors": "yarn jest -i tests/handleErrors.test.ts",
+    "test:all": "yarn jest --runInBand --detectOpenHandles",
+    "test:errors": "yarn jest -i tests/handleErrors.test.ts --detectOpenHandles",
+    "test:options": "yarn jest -i tests/bridgeOptions.test.ts --detectOpenHandles",
+    "test:request": "yarn jest -i tests/requestOptions.test.ts --detectOpenHandles",
+    "test:parallel": "yarn jest -i tests/parallel.test.ts --detectOpenHandles",
     "build": "microbundle --format umd,cjs,es",
     "publish": "npm publish"
   },

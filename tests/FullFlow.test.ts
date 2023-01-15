@@ -1,16 +1,9 @@
-import {
-  Message,
-  MessageDirection,
-  MessageType,
-  RequestResponse,
-} from "../src/MessageBridgeTypes"
+import { RequestResponse } from "../src/MessageBridgeTypes"
 import { ClientSideMessageBridgeService } from "../src/connection-protocols/ClientSideMessageBridgeService"
-import { InMemoryClientSideServer } from "../src/connection-protocols/InMemoryClientSideServer"
 import {
   GetTodoItemQuery,
   GetTodoItemQueryResponse,
   RequestType,
-  Store,
   TodoItem,
   UpdateTodoItemCommand,
   UpdateTodoItemCommandResponse,
