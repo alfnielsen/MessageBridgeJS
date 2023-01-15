@@ -400,27 +400,3 @@ test("bridge options: onError (parallel)", async () => {
     onError: undefined,
   })
 })
-
-// -------------------- debug (logger) --------------------
-
-// logger?: (...data: any[]) => void // set custom logger (default: console?.log)
-// logMessageReceived?: boolean
-// logSendingMessage?: boolean
-// logMessageReceivedFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
-// logSendingMessageFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
-
-test("bridge options: set logger", async () => {
-  jest.setTimeout(10000)
-  await bridge.connect()
-  const logList: string[] = []
-  bridge.setOptions({
-    logger: (...data) => {
-      logList.push(JSON.stringify(data))
-    },
-  })
-
-  // CLEANUP
-  bridge.setOptions({
-    logger: undefined,
-  })
-})

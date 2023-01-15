@@ -222,16 +222,18 @@ Protected commands _(advanced use)_
 ## All features are fully tested
 
 **jest** tests:  
-<span style="background: green; padding: 3px">PASS</span> tests/bridgeOptions.test.ts  
-<span style="background: green; padding: 3px">PASS</span> tests/fullFlow.test.ts  
-<span style="background: green; padding: 3px">PASS</span> tests/requestOptions.test.ts  
-<span style="background: green; padding: 3px">PASS</span> tests/sendQuery.test.ts  
-<span style="background: green; padding: 3px">PASS</span> tests/sendCommand.test.ts  
-<span style="background: green; padding: 3px">PASS</span> tests/handleErrors.test.ts  
-<span style="background: green; padding: 3px">PASS</span> tests/parallel.test.ts
+<span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>bridgeOptions.test.ts  
+<span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>fullFlow.test.ts  
+<span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>logger.test.ts  
+<span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>sendEvent.test.ts  
+<span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>requestOptions.test.ts  
+<span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>sendQuery.test.ts  
+<span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>sendCommand.test.ts  
+<span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>handleErrors.test.ts  
+<span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>parallel.test.ts
 
-Test Suites: <span style="color: green; ">7 passed</span>, 7 total  
-Tests: <span style="color: green; ">34 passed</span>, 34 total
+Test Suites: <span style="color: green; ">9 passed</span>, 9 total  
+Tests: <span style="color: green; ">36 passed</span>, 36 total
 
 ## Async vs Callback
 

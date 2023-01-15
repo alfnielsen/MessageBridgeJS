@@ -25,8 +25,11 @@ export type BridgeOptions = {
   // debugging
   logger?: (...data: any[]) => void // set custom logger (default: console?.log)
   logParseIncomingMessageError?: boolean // (default: true)
+  logParseIncomingMessageErrorFormat?: (err: unknown) => any[] // (has default implementation)
   logMessageReceived?: boolean // log all messages received
+  logMessageReceivedFormat?: (msg: Message) => any[] // (has default implementation)
   logSendingMessage?: boolean // log all messages sent
+  logSendingMessageFormat?: (msg: Message) => any[] // (has default implementation)
   logMessageReceivedFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
   logSendingMessageFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
 }

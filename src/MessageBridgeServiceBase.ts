@@ -40,6 +40,14 @@ export abstract class MessageBridgeServiceBase {
       `Timeout after ${ms}ms (BridgeOptions.timeout)`,
     timeoutFromRequestOptionsMessage: (ms: number) =>
       `Timeout after ${ms}ms (RequestOptions.timeout)`,
+    logParseIncomingMessageErrorFormat: (err: unknown) => [
+      "Bridge-Error (parse messageReceived):",
+      err,
+    ],
+    logMessageReceived: false,
+    logMessageReceivedFormat: (msg: Message) => ["Bridge (messageReceived):", msg],
+    logSendingMessage: false,
+    logSendingMessageFormat: (msg: Message) => ["Bridge (sendingMessage):", msg],
   }
 
   constructor(public wsUri: string) {}
@@ -343,14 +351,18 @@ export abstract class MessageBridgeServiceBase {
           log = !!msg.name.match(this.options?.logMessageReceivedFilter)
         }
         if (log) {
-          this.options.logger("Bridge (messageReceived): ", msg)
+          const logData = this.options?.logMessageReceivedFormat?.(msg) ?? [msg]
+          this.options.logger(...logData)
         }
       }
       this.handleIncomingMessage(msg)
     } catch (e) {
       this.onError(e as Error)
       if (this.options?.logger && this.options?.logParseIncomingMessageError) {
-        this.options.logger("Bridge-Error (parse messageReceived): ", e)
+        const logData = this.options?.logParseIncomingMessageErrorFormat?.(
+          messageDto,
+        ) ?? [e]
+        this.options.logger(logData)
       }
     }
   }
@@ -363,7 +375,8 @@ export abstract class MessageBridgeServiceBase {
         log = !!msg.name.match(this.options?.logSendingMessageFilter)
       }
       if (log) {
-        this.options.logger("Bridge (sendingMessage): ", msg)
+        const logData = this.options?.logSendingMessageFormat?.(msg) ?? [msg]
+        this.options.logger(...logData)
       }
     }
     this.options.onSend?.(msg)
