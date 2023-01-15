@@ -48,7 +48,6 @@ function createTestServer() {
   server.addQuery<GetTodoItemQuery, GetTodoItemQueryResponse>(
     RequestType.GetTodoItemQuery,
     async ({ request, response, error, store }) => {
-      request
       const items = store.todos.filter((t) =>
         t.title.toLowerCase().includes(request.search.toLowerCase()),
       )

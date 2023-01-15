@@ -15,6 +15,8 @@ _\*This doesn't mean you don't want controller or need them to expose you API fo
 
 ### Examples
 
+[Demo (CodeSandbox):](https://codesandbox.io/s/message-brigde-js-u7bzxi?file=/src/App.tsx)
+
 ```ts
 // See "/tests" in repository for more examples
 const bridge = new MessageBridgeService("ws://localhost:8080")
