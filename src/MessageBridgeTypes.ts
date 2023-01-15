@@ -8,27 +8,27 @@ export type OmitAndOptional<
 > = Pick<Partial<Omit<T, TOmit>>, TOpt> & Omit<Omit<T, TOmit>, TOpt>
 
 // bridge
-
 export type BridgeOptions = {
-  // add listeners
+  // Add listeners:
   onMessage?: (msg: Message) => void
   onSend?: (msg: Message) => void
   onError?: (err?: unknown /*Error*/, eventOrData?: unknown) => void
   onClose?: (err?: unknown /*Error*/, eventOrData?: unknown) => void
   onConnect?: () => void
-  // intersection - can be used to generalize behavior (Happens as early as possible in the process)
+  // Interception:
+  // - can be used to generalize behavior (Happens as early as possible in the process)
   // Happens just after user options is applied. Before stored in track map and before any other actions.
   interceptSendMessage?: (msg: Message) => Message // (default: undefined)
   // Happens after message-string parsing, but before stored in history, onMessage and all other actions
   // To get request for the message use: getTrackedRequestMessage(trackId: string): Message | undefined
   interceptReceivedMessage?: (msg: Message) => Message // (default: undefined)
-  // handle errors and timeouts
+  // Handle errors and timeouts:
   avoidThrowOnNonTrackedError?: boolean // (default: undefined)
   throwOnTrackedError?: boolean // (default: undefined)
   timeout?: number // (default: undefined)
+  // Debugging options:
   timeoutFromBridgeOptionsMessage?: (ms: number) => string // (has default implementation)
   timeoutFromRequestOptionsMessage?: (ms: number) => string // (has default implementation)
-  // debugging
   keepHistoryForReceivedMessages?: boolean // (default: false)
   keepHistoryForSendingMessages?: boolean // (default: false)
   logger?: (...data: any[]) => void // set custom logger (default: console?.log)
@@ -41,7 +41,6 @@ export type BridgeOptions = {
   logMessageReceivedFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
   logSendingMessageFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
 }
-
 // enums (These are runtime enums)
 export enum MessageType {
   Command = "Command",
