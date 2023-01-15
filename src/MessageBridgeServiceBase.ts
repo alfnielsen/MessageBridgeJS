@@ -34,6 +34,9 @@ export abstract class MessageBridgeServiceBase {
   bridgeErrors: unknown[] /*Error*/ = []
 
   options: BridgeOptions = {
+    timeout: undefined,
+    keepHistoryForReceivedMessages: false,
+    keepHistoryForSendingMessages: false,
     logger: (...data: any[]) => console?.log ?? (() => {}),
     logParseIncomingMessageError: true,
     timeoutFromBridgeOptionsMessage: (ms: number) =>
@@ -58,6 +61,10 @@ export abstract class MessageBridgeServiceBase {
 
   setOptions(opt: BridgeOptions) {
     this.options = { ...this.options, ...opt }
+  }
+
+  getTrackedRequestMessage(trackId: string): Message | undefined {
+    return this.subscribedTrackIdMap[trackId]?.requestMessage
   }
 
   // the following methods can overwritten with class inheritance
@@ -190,6 +197,10 @@ export abstract class MessageBridgeServiceBase {
     ) => void
   }) {
     requestMessage.direction = MessageDirection.ToServer
+    if (this.options.interceptSendMessage) {
+      requestMessage = this.options.interceptSendMessage(requestMessage)
+    }
+
     // handle error and timeout
     const handleError = (errOpt: RequestMaybeNoError<any, TRequest>) => {
       if (optionalTimeId) {
@@ -324,8 +335,11 @@ export abstract class MessageBridgeServiceBase {
       "direction"
     >,
   ) {
-    const msg = createEventMessage(top)
+    let msg = createEventMessage(top)
     msg.direction = MessageDirection.ToServer
+    if (this.options.interceptSendMessage) {
+      msg = this.options.interceptSendMessage(msg)
+    }
     this.internalSendMessage(msg)
     return msg
   }
@@ -344,16 +358,9 @@ export abstract class MessageBridgeServiceBase {
       return
     }
     try {
-      const msg = createMessageFromDto(messageDto)
-      if (this.options?.logger && this.options?.logMessageReceived) {
-        let log = true
-        if (this.options?.logMessageReceivedFilter) {
-          log = !!msg.name.match(this.options?.logMessageReceivedFilter)
-        }
-        if (log) {
-          const logData = this.options?.logMessageReceivedFormat?.(msg) ?? [msg]
-          this.options.logger(...logData)
-        }
+      let msg = createMessageFromDto(messageDto)
+      if (this.options.interceptReceivedMessage) {
+        msg = this.options.interceptReceivedMessage(msg)
       }
       this.handleIncomingMessage(msg)
     } catch (e) {
@@ -368,7 +375,9 @@ export abstract class MessageBridgeServiceBase {
   }
 
   protected internalSendMessage(msg: Message) {
-    this.history.push(msg)
+    if (this.options.keepHistoryForSendingMessages) {
+      this.history.push(msg)
+    }
     if (this.options?.logger && this.options?.logSendingMessage) {
       let log = true
       if (this.options?.logSendingMessageFilter) {
@@ -385,7 +394,19 @@ export abstract class MessageBridgeServiceBase {
 
   protected handleIncomingMessage(msg: Message) {
     //console.log("handleIncomingMessage", msg)
-    this.history.push(msg)
+    if (this.options.keepHistoryForReceivedMessages) {
+      this.history.push(msg)
+    }
+    if (this.options?.logger && this.options?.logMessageReceived) {
+      let log = true
+      if (this.options?.logMessageReceivedFilter) {
+        log = !!msg.name.match(this.options?.logMessageReceivedFilter)
+      }
+      if (log) {
+        const logData = this.options?.logMessageReceivedFormat?.(msg) ?? [msg]
+        this.options.logger(...logData)
+      }
+    }
     this.options.onMessage?.(msg)
 
     let errorHandled = msg.type !== MessageType.Error

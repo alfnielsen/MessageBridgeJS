@@ -20,6 +20,12 @@ it("test flow: async, non async, cleanup", async () => {
   const spyHandleIncomingMessage = jest.spyOn(bridge, "handleIncomingMessage")
 
   await bridge.connect()
+
+  bridge.setOptions({
+    keepHistoryForReceivedMessages: true,
+    keepHistoryForSendingMessages: true,
+  })
+
   // -------------------- Query --------------------
 
   expect(bridge.history.length).toBe(0)

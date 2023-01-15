@@ -25,6 +25,7 @@
     "test:parallel": "yarn jest -i tests/parallel.test.ts --runInBand --detectOpenHandles",
     "test:event": "yarn jest -i tests/sendEvent.test.ts --runInBand --detectOpenHandles",
     "test:logger": "yarn jest -i tests/logger.test.ts --runInBand --detectOpenHandles",
+    "test:intercept": "yarn jest -i tests/intercept.test.ts --runInBand --detectOpenHandles",
     "build": "microbundle --format umd,cjs,es",
     "publish": "npm publish"
   },

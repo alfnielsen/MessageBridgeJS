@@ -110,7 +110,7 @@ See the tests in "/tests" (github) for examples of all features.
 
 ## Backend
 
-The backend must handle bridge messages and respond to with the correct **tractId** and type.
+The backend must handle bridge messages and respond a message with the correct **tractId** and **type**.
 
 Type map:
 
@@ -226,14 +226,15 @@ Protected commands _(advanced use)_
 <span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>fullFlow.test.ts  
 <span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>logger.test.ts  
 <span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>sendEvent.test.ts  
+<span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>intercept.test.ts  
 <span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>requestOptions.test.ts  
 <span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>sendQuery.test.ts  
 <span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>sendCommand.test.ts  
 <span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>handleErrors.test.ts  
 <span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>parallel.test.ts
 
-Test Suites: <span style="color: green; ">9 passed</span>, 9 total  
-Tests: <span style="color: green; ">37 passed</span>, 37 total
+Test Suites: <span style="color: green; ">10 passed</span>, 10 total  
+Tests: <span style="color: green; ">38 passed</span>, 38 total
 
 ## Async vs Callback
 
@@ -284,7 +285,7 @@ try {
 
 But this can be changed with the option: **avoidThrowOnNonTrackedError**
 
-Tracked requests will **NOT** default to throw errors, but instead include it in the _RequestResponse_  
+Tracked requests will **NOT** by default to throw errors, but instead include error in the _RequestResponse_  
 If an error is thrown or send from the backend (using the Error type with trackId),  
 the response will be _undefined_ and the error will be set.
 
@@ -318,6 +319,12 @@ export type BridgeOptions = {
   onError?: (err?: unknown /*Error*/, eventOrData?: unknown) => void
   onClose?: (err?: unknown /*Error*/, eventOrData?: unknown) => void
   onConnect?: () => void
+  // intersection - can be used to generalize behavior (Happens as early as possible in the process)
+  // Happens just after user options is applied. Before stored in track map and before any other actions.
+  interceptSendMessage?: (msg: Message) => Message // (default: undefined)
+  // Happens after message-string parsing, but before stored in history, onMessage and all other actions
+  // To get request for the message use: getTrackedRequestMessage(trackId: string): Message | undefined
+  interceptReceivedMessage?: (msg: Message) => Message // (default: undefined)
   // handle errors and timeouts
   avoidThrowOnNonTrackedError?: boolean // (default: undefined)
   throwOnTrackedError?: boolean // (default: undefined)
@@ -325,6 +332,8 @@ export type BridgeOptions = {
   timeoutFromBridgeOptionsMessage?: (ms: number) => string // (has default implementation)
   timeoutFromRequestOptionsMessage?: (ms: number) => string // (has default implementation)
   // debugging
+  keepHistoryForReceivedMessages?: boolean // (default: false)
+  keepHistoryForSendingMessages?: boolean // (default: false)
   logger?: (...data: any[]) => void // set custom logger (default: console?.log)
   logParseIncomingMessageError?: boolean // (default: true)
   logParseIncomingMessageErrorFormat?: (err: unknown) => any[] // (has default implementation)
@@ -341,14 +350,20 @@ export type BridgeOptions = {
 
 You can set options for each request.
 
-````ts
+- onSuccess // not recommended for most use cases
+- onError // not recommended for most use cases
+- timeout // set timeout for this request (overrides bridge timeout\*)
+
+\*_The bridge options has NO timeout as default_
+
+```ts
 // Ex:
 bridge.sendCommand({
   name: "CreateTodo",
   payload: command,
-  timeout: 10_000
+  timeout: 10_000,
 })
-
+```
 
 # Getting started
 
@@ -391,7 +406,7 @@ export type GetTodoItemQuery = {
   throwError?: boolean
   sleep?: number
 }
-````
+```
 
 ```ts
 // TestServer.ts
