@@ -16,7 +16,7 @@ _\*This doesn't mean you don't want controller or need them to expose you API fo
 ### Examples
 
 ```ts
-// See "/examples" in repository for more examples
+// See "/tests" in repository for more examples
 const bridge = new MessageBridgeService("ws://localhost:8080")
 await bridge.connect()
 
@@ -82,7 +82,7 @@ let requestList = [
   {...}
 ]
 // convert to tracked requests
-let promiseList = searchOptions.map(({name, payload}) =>
+let promiseList = requestList.map(({name, payload}) =>
   bridge.sendQueryTracked({ name, payload })
 )
 const responses = await Promise.all(promiseList)
