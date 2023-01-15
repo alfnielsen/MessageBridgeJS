@@ -233,7 +233,7 @@ Protected commands _(advanced use)_
 <span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>parallel.test.ts
 
 Test Suites: <span style="color: green; ">9 passed</span>, 9 total  
-Tests: <span style="color: green; ">36 passed</span>, 36 total
+Tests: <span style="color: green; ">37 passed</span>, 37 total
 
 ## Async vs Callback
 
@@ -327,12 +327,28 @@ export type BridgeOptions = {
   // debugging
   logger?: (...data: any[]) => void // set custom logger (default: console?.log)
   logParseIncomingMessageError?: boolean // (default: true)
+  logParseIncomingMessageErrorFormat?: (err: unknown) => any[] // (has default implementation)
   logMessageReceived?: boolean // log all messages received
+  logMessageReceivedFormat?: (msg: Message) => any[] // (has default implementation)
   logSendingMessage?: boolean // log all messages sent
+  logSendingMessageFormat?: (msg: Message) => any[] // (has default implementation)
   logMessageReceivedFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
   logSendingMessageFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
 }
 ```
+
+## Request options
+
+You can set options for each request.
+
+````ts
+// Ex:
+bridge.sendCommand({
+  name: "CreateTodo",
+  payload: command,
+  timeout: 10_000
+})
+
 
 # Getting started
 
@@ -375,7 +391,7 @@ export type GetTodoItemQuery = {
   throwError?: boolean
   sleep?: number
 }
-```
+````
 
 ```ts
 // TestServer.ts

@@ -36,3 +36,33 @@ test("request options: timeout:1000", async () => {
   }
   expect(/timeout/i.test(error)).toBe(true)
 })
+
+test("request options: override bridge settings, timeout:1000", async () => {
+  jest.setTimeout(10000)
+  await bridge.connect()
+  bridge.setOptions({
+    timeout: 10,
+  })
+
+  const { isError: shouldBeError } = await bridge.sendQueryTracked<
+    GetTodoItemQuery,
+    GetTodoItemQueryResponse,
+    string
+  >({
+    name: RequestType.GetTodoItemQuery,
+    payload: { search: "1", sleep: 500 },
+  })
+
+  const { isError } = await bridge.sendQueryTracked<
+    GetTodoItemQuery,
+    GetTodoItemQueryResponse,
+    string
+  >({
+    name: RequestType.GetTodoItemQuery,
+    payload: { search: "1", sleep: 500 },
+    timeout: 1000,
+  })
+
+  expect(shouldBeError).toBe(true)
+  expect(isError).toBe(false)
+})
