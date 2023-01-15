@@ -7,44 +7,11 @@ Extreme simplified Commands, Queries and Events for applications UI.
 The Bridge enabled sending Commands, Queries and Event between a frontend and backend
 through a websocket.
 
+The pattern will remove the needs for controllers\* and hook directly into Commands, Queries and Events in the backend.
+
+_\*This doesn't mean you don't want controller or need them to expose you API for other sources_
+
 ![Overview-diagram](docs/Overview-diagram.jpg)
-
-### Bridge commands:
-
-Most used commands:
-
-- sendCommand
-- sendQuery
-- sendEvent _(It's called send because it will send it to the backend - not fire it! )_
-- subscribeEvent
-- connect
-
-Tracked versions of requests (They resolve the promise with a full RequestResponse<TRequest,TResponse>)  
-It includes the request and response messages (So you can track which request data what used to get the response)
-
-- sendCommandTracked
-- sendQueryTracked
-
-Underlying commands _(can sometime be used to fetch trackId ect...)_
-
-- sendMessage
-- onError _(override to handle errors)_
-- onClose _(override to handle close)_
-
-Helper commands _(advanced use)_
-
-- createCommandMessage
-- createQueryMessage
-- createEventMessage
-- createMessage
-- createMessageFromDto
-
-Protected commands _(advanced use)_
-
-- onMessage
-- handleIncomingMessage
-- receiveEventMessage
-- internalSendMessage
 
 ### Examples
 
@@ -78,14 +45,207 @@ const unsub = bridge.subscribeEvent({
 })
 ```
 
-Callback options:
+Tracked requests:
+
+```ts
+// tracked:
+const { response, request, requestMessage } = await bridge.sendQueryTracked({
+  name: "GetTotoItem",
+  payload: { id: 25 },
+})
+console.log(
+  `${requestMessage.type} ${requestMessage.name}: Todo with id ${request.id} has title '${response.title}'`,
+)
+// => `Query GetTotoItem: Todo with id 25 has title 'todo1'`
+```
+
+Multiple parallel requests:
+
+```ts
+let promise1 = bridge.sendCommand({
+  name: "CreateTodo",
+  payload: command,
+})
+let promise2 = bridge.sendCommand({
+  name: "CreateTodoNode",
+  payload: commandNote,
+})
+const [todo, note] = await Promise.all([promise1, promise2])
+```
+
+Multiple parallel tracked requests:
+
+```ts
+let requestList = [
+  { name: "GetTotoItem", payload: { id: 25 } },
+  { name: "GetNote", payload: { search: "remember" } },
+  {...}
+]
+// convert to tracked requests
+let promiseList = searchOptions.map(({name, payload}) =>
+  bridge.sendQueryTracked({ name, payload })
+)
+const responses = await Promise.all(promiseList)
+responses.forEach(({ response, request, requestMessage }) => {
+  if(requestMessage.name === "GetTotoItem"){
+    console.log(`Todo: ${response.title}`),
+  }
+  if(requestMessage.name === "GetNote"){
+    console.log(`Note: ${response.title}`)
+  }
+})
+```
+
+See the tests in "/tests" (github) for examples of all features.
+
+## Install
+
+```
+> npm i message-bridge-js
+```
+
+```
+> yarn add message-bridge-js
+```
+
+## Backend
+
+The backend must handle bridge messages and respond to with the correct **tractId** and type.
+
+Type map:
+
+- Command => CommandResponse
+- Query => QueryResponse
+- Event => No response
+- <= Server Event can also be send from the backend to the frontend (use type Event)
+
+An example of a backend implementation, can be found in the **InMemoryClientSideServer** _(in "/services" folder)_
+
+Note it uses the helper methods in _MessageBridgeHelper.ts_ to create the messages. _(Primary **createMessage**)_
+
+At some point in the future there will most likely be create official backend implementations for NodeJs and .NET Core.
+
+> It's suggested to use some kind of CQRS pattern in the backend as well (Fx MediatR for asp.net core)
+
+## Events (Responsive behavior)
+
+The Bridge enabled the frontend to listen to events send from processes in the backend.
+
+This enables the frontend to be responsive to changes in the backend, instead of polling.
+
+## Technologies (dependencies)
+
+The primary implementation uses [@microsoft/signalr](https://www.npmjs.com/package/@microsoft/signalr)
+
+The base bridge class uses [uuid](https://www.npmjs.com/package/uuid)
+
+## Bridge versions
+
+The primary and most tested version is the SignalR version: **SignalRMessageBridgeService**
+
+But there is also a websocket version: **WebSocketMessageBridgeService**
+
+And an **ClientSideMessageBridgeService** that uses the **InMemoryClientSideServer** to get started fast without a backend.
+
+## Internal - how it does it
+
+The bridge sends BridgeMessage that contains a:
+
+**Name** of the command, query or event
+
+**Payload** that contains the actual Command/Query or payload for en Event for Error
+
+**TrackId** that is used to catch responses
+
+**Type** that are one of
+
+- Command
+- Query
+- CommandResponse
+- QueryResponse
+- Event
+- Error
+
+The frontend will add a **trackId** which in the backend will be added in the responses.
+
+The message is sent through a websocket and deserialize its payload in the backend.
+
+The backend handles the Command/Query/Event and create a response message.  
+The sent the response message back to the frontend including correct **type** and the **trackId**
+
+The server can also send events to the frontend. _(without any prior request)_
+
+![Overview-diagram](docs/Command-flow.jpg)
+
+### Flow diagram
+
+![Flow-diagram](docs/CommandServiceDiagram.jpg)
+
+# Bridge commands:
+
+Most used commands:
+
+- sendCommand
+- sendQuery
+- sendEvent _(It's called send because it will send it to the backend - not fire it! )_
+- subscribeEvent
+- connect
+
+Tracked versions of requests (They resolve the promise with a full RequestResponse<TRequest,TResponse>)  
+It includes the request and response messages (So you can track which request data what used to get the response)
+
+- sendCommandTracked
+- sendQueryTracked
+
+Underlying commands _(can sometime be used to fetch trackId ect...)_
+
+- sendMessage
+- sendMessageTracked
+- onError _(override to handle errors)_
+- onClose _(override to handle close)_
+
+Helper commands _(advanced use)_
+
+- createCommandMessage
+- createQueryMessage
+- createEventMessage
+- createMessage
+- createMessageFromDto
+
+Protected commands _(advanced use)_
+
+- onMessage
+- handleIncomingMessage
+- receiveEventMessage
+- internalSendMessage
+
+## All features are fully tested
+
+**jest** tests:  
+<span style="background: green; padding: 3px">PASS</span> tests/bridgeOptions.test.ts  
+<span style="background: green; padding: 3px">PASS</span> tests/fullFlow.test.ts  
+<span style="background: green; padding: 3px">PASS</span> tests/requestOptions.test.ts  
+<span style="background: green; padding: 3px">PASS</span> tests/sendQuery.test.ts  
+<span style="background: green; padding: 3px">PASS</span> tests/sendCommand.test.ts  
+<span style="background: green; padding: 3px">PASS</span> tests/handleErrors.test.ts  
+<span style="background: green; padding: 3px">PASS</span> tests/parallel.test.ts
+
+Test Suites: <span style="color: green; ">7 passed</span>, 7 total  
+Tests: <span style="color: green; ">34 passed</span>, 34 total
+
+## Async vs Callback
+
+You can use the bridge in two ways:
+
+- with async/await (default and recommended)
+- with callbacks.
 
 ```ts
 // sendCommand and sendQuery can take a callback instead of awaiting the response
 bridge.sendCommand({
   name: "CreateTodo",
   payload: command,
-  onSucess(id) {
+  onSuccess(id) {
     console.log(`Todo created with id: ${id}`)
   },
   onError(error) {
@@ -103,141 +263,121 @@ const id = await bridge.sendCommand({
 })
 ```
 
-Multiple parallel requests:
+## Handle errors
+
+There are a couple of ways to handle errors.
+
+By default the bridge will follow normal promise flow for _non-tracked_ requests (using try/catch)
 
 ```ts
-let promise1 = bridge.sendCommand({
+try {
+  const response = await bridge.sendCommand({
+    name: "CreateTodo",
+    payload: command,
+  })
+} catch (error) {
+  // handle error
+}
+```
+
+But this can be changed with the option: **avoidThrowOnNonTrackedError**
+
+Tracked requests will **NOT** default to throw errors, but instead include it in the _RequestResponse_  
+If an error is thrown or send from the backend (using the Error type with trackId),  
+the response will be _undefined_ and the error will be set.
+
+This behavior can be changed with the option: **throwOnTrackedError**
+
+```ts
+const { response, error, isError, errorMessage } = await bridge.sendCommandTracked({
   name: "CreateTodo",
   payload: command,
 })
-let promise2 = bridge.sendCommand({
-  name: "CreateTodoNode",
-  payload: commandNote,
-})
-const [todo, note] = await Promise.all([promise1, promise2])
 ```
 
-Tracked requests:
+## Bridge options
 
 ```ts
-// base:
-const { response: todoItems, request: searchOptions } = await bridge.sendQueryTracked({
-  name: "GetTotoItem",
-  payload: someSearchOptions,
+// Ex:
+bridge.setOptions({
+  timeout: 10_000, // set timeout for all requests to 10 seconds
+  avoidThrowOnNonTrackedError: true, // avoid throwing errors on non tracked requests
+  onError: (err, eventOrData) => {
+    // listen to all errors (manual handling of errors)
+  },
+  logMessageReceived: true // log all incoming messages (For debugging)
+  logSendingMessage: true // log all outgoing messages (For debugging)
 })
-// parallel:
-// do multiple searches:
-let queryPromise1 = searchOptions.map((searchOptions) =>
-  bridge.sendQueryTracked({
-    name: "GetTotoItem",
-    payload: { searchTerm: "se" },
-  }),
-)
-let queryPromise2 = searchOptions.map((searchOptions) =>
-  bridge.sendQueryTracked({
-    name: "GetTotoItem",
-    payload: { searchTerm: "se" },
-  }),
-)
-const allResults = await Promise.all([queryPromise1, queryPromise2])
-allResults.forEach(({ response, request }) => {
-  console.log(
-    `Search with '${request.payload.searchTerm}' returned ${response.length} items`,
-  )
-})
+// BridgeOptions defined in MessageBridgeTypes.ts
+export type BridgeOptions = {
+  // add listeners
+  onMessage?: (msg: Message) => void
+  onSend?: (msg: Message) => void
+  onError?: (err?: unknown /*Error*/, eventOrData?: unknown) => void
+  onClose?: (err?: unknown /*Error*/, eventOrData?: unknown) => void
+  onConnect?: () => void
+  // handle errors and timeouts
+  avoidThrowOnNonTrackedError?: boolean // (default: undefined)
+  throwOnTrackedError?: boolean // (default: undefined)
+  timeout?: number // (default: undefined)
+  timeoutFromBridgeOptionsMessage?: (ms: number) => string // (has default implementation)
+  timeoutFromRequestOptionsMessage?: (ms: number) => string // (has default implementation)
+  // debugging
+  logger?: (...data: any[]) => void // set custom logger (default: console?.log)
+  logParseIncomingMessageError?: boolean // (default: true)
+  logMessageReceived?: boolean // log all messages received
+  logSendingMessage?: boolean // log all messages sent
+  logMessageReceivedFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
+  logSendingMessageFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
+}
 ```
-
-### Install
-
-```
-> npm i message-bridge-js
-```
-
-```
-> yarn add message-bridge-js
-```
-
-### Backend
-
-On the backend it has a sister library (MessageBridgeCS) that execute Command and Queries and notify the UI on Events.
-
-The general pattern will remove the needs for controllers\* and hook directly into you Commands, Queries and Events in your backend.
-
-_\*This doesn't mean you don't want them or need them to expose you API for other sources_
-
-#### Coexist with Controllers
-
-MessageBridge don't restrict you to implement anything you did'n have before,
-and you can choose to use it on only a couple of elements
-(fx your admin or support UI)
-
-All command/queries call can have use both the bridge and a controller,
-no restrictions.
-(But your controllers should in this scenario never do anything
-else then just "send" the command/query to the handlers
-i the application layer of your backend )
-
-### Events
-
-The Bridge enabled the frontend to listen to events.
-
-### Technologies
-
-Build on SignalR (Websockets)
-
-Backend is (currently build on C# and MediatR)
-
-#### Internal - how it does it
-
-The bridge sends BridgeMessage that contains a:
-
-**Name** of the command, query or event
-
-**Payload** that contains the actual Command/Query or payload for en Event for Error
-
-**TrackId** that is used to catch responses
-
-**Type** that are ont of
-
-- Command
-- Query
-- CommandResponse
-- QueryResponse
-- Event
-- Error
-
-The frontend will add a **TrackId** which in the backend will be added in the responses.
-
-The message is sent to the through a websocket and
-deserialize its payload in the backend.
-
-It will then execute the Command/Query, receive the application process (Handlers)
-response and create a response message,
-that are sent back to the frontend including the **TrackId**
-
-![Overview-diagram](docs/Command-flow.jpg)
-
-#### Not restricted to these Technologies
-
-The first version of MessageBridge is designed for a C# backend,
-and uses @microsoft/SignalR and its back ends hubs.
-
-The is not a restriction, but a choice for the first version.
-Other implementation using other messageQues then SignalR
-and other backends like Javascript (typescript) or Java can be created in the future.
-
-### Flow diagram
-
-![Flow-diagram](docs/CommandServiceDiagram.jpg)
 
 # Getting started
 
 You can use the included **ClientSideMessageBridgeService** and **InMemoryClientSideServer**
 to get started quickly (and later change the bridge to the **SignalR** or **Websocket** version).
 
+See the tests for full examples in the "/tests" folder (Github).
+
+```ts
+// TestInterfaces.ts
+export enum RequestType {
+  GetTodoItemQuery = "GetTodoItemQuery",
+  UpdateTodoItemCommand = "UpdateTodoItemCommand",
+  TodoItemUpdated = "TodoItemUpdated",
+}
+
+export type Store = {
+  todos: TodoItem[]
+}
+
+export type TodoItem = {
+  id: number
+  title: string
+}
+export type UpdateTodoItemCommandResponse = {
+  done: boolean
+}
+export type UpdateTodoItemCommand = {
+  id: number
+  title: string
+  throwError?: boolean
+  sleep?: number
+}
+export type GetTodoItemQueryResponse = {
+  items: TodoItem[]
+}
+
+export type GetTodoItemQuery = {
+  search: string
+  throwError?: boolean
+  sleep?: number
+}
+```
+
 ```ts
 // TestServer.ts
-import { InMemoryClientSideServer } from "../src/connection-protocols/InMemoryClientSideServer"
+import { InMemoryClientSideServer } from "message-bridge-js"
 import { RequestType, Store } from "./TestInterfaces"
 
 let server = new InMemoryClientSideServer<Store>()
@@ -246,25 +386,91 @@ server.store.todos = [
   { id: 2, title: "todo2" },
   { id: 3, title: "todo3" },
 ]
-server.addCommand(RequestType.UpdateTodoItemCommand, (opt) => {
+server.addCommand(RequestType.UpdateTodoItemCommand, ({ event, response }) => {
   const todo = server.store.todos.find((t) => t.id === opt.requestMessage.payload.id)
   if (todo) {
     todo.title = opt.requestMessage.payload.title
   }
   setTimeout(() => {
-    opt.fireEvent(RequestType.TodoItemUpdated, {
+    event(RequestType.TodoItemUpdated, {
       id: opt.requestMessage.payload.id,
       title: opt.requestMessage.payload.title,
     })
   }, 10)
-  return { done: true }
+  response({ done: true })
 })
-server.addQuery(RequestType.GetTodoItemQuery, (opt) => {
+server.addQuery(RequestType.GetTodoItemQuery, ({ response }) => {
   const items = server.store.todos.filter((t) =>
     t.title.toLowerCase().includes(opt.requestMessage.payload.search.toLowerCase()),
   )
-  return { items }
+  response({ items })
 })
 
 export { server as testServer }
+```
+
+```ts
+// TestClient.ts
+import { ClientSideMessageBridgeService } from "message-bridge-js"
+import { RequestType } from "./TestInterfaces"
+import { server } from "./TestServer"
+
+const bridge = new ClientSideMessageBridgeService("ws://localhost:1234") // dummy url
+bridge.server = server
+
+// interact with the (fake inMemory) server
+const response = await bridge.sendQuery<GetTodoItemQuery, GetTodoItemQueryResponse>({
+  name: RequestType.GetTodoItemQuery,
+  payload: {
+    search: "todo",
+  },
+})
+
+await bridge.sendCommand<UpdateTodoItemCommand, UpdateTodoItemCommandResponse>({
+  name: RequestType.UpdateTodoItemCommand,
+  payload: {
+    id: 1,
+    title: "todo1 changed",
+  },
+})
+```
+
+## React hook example
+
+The bridge can be used with any frontend framework, but here is an example of how to use it with React hooks.
+
+```ts
+function useGetTodo(id: number): Promise<TodoItem | undefined> {
+  const [todo, setTodo] = useState<TodoItem | undefined>()
+  useEffect(async () => {
+    const todos = await bridge.sendQuery<GetTodoItemQuery, GetTodoItemQueryResponse>({
+      name: RequestType.GetTodoItemQuery,
+      payload: { id },
+    })
+    setTodo(todos?.[0])
+    const unsub = bridge.subscribeEvent<TodoItemUpdatedEvent>({
+      name: RequestType.TodoItemUpdated,
+      onEvent: (todoEvent) => {
+        if (event.id === id) {
+          setTodo((todo) => ({
+            ...todo,
+            title: todoEvent.title,
+          }))
+        }
+      },
+    })
+    return () => unsub()
+  }, [id])
+  return todo
+}
+
+function useUpdateTodo() {
+  const updateTodo = useCallback(async (id: number, title: string) => {
+    await bridge.sendCommand<UpdateTodoItemCommand, UpdateTodoItemCommandResponse>({
+      name: RequestType.UpdateTodoItemCommand,
+      payload: { id, title },
+    })
+  }, [])
+  return updateTodo
+}
 ```

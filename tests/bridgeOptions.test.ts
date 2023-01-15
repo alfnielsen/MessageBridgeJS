@@ -1,5 +1,5 @@
 import { Message, RequestMaybeNoError, RequestResponse } from "../src/MessageBridgeTypes"
-import { ClientSideMessageBridgeService } from "../src/connection-protocols/ClientSideMessageBridgeService"
+import { ClientSideMessageBridgeService } from "../src/services/ClientSideMessageBridgeService"
 import {
   GetTodoItemQuery,
   GetTodoItemQueryResponse,
@@ -8,7 +8,7 @@ import {
   UpdateTodoItemCommandResponse,
 } from "./TestInterfaces"
 import { createTestServer } from "./TestServer"
-import { RequestErrorResponse } from "../src/connection-protocols/InMemoryClientSideServer"
+import { RequestErrorResponse } from "../src/services/InMemoryClientSideServer"
 
 // --------------------- error tracking ---------------------
 const bridge = new ClientSideMessageBridgeService("ws://localhost:1234")
@@ -398,5 +398,29 @@ test("bridge options: onError (parallel)", async () => {
   // CLEANUP
   bridge.setOptions({
     onError: undefined,
+  })
+})
+
+// -------------------- debug (logger) --------------------
+
+// logger?: (...data: any[]) => void // set custom logger (default: console?.log)
+// logMessageReceived?: boolean
+// logSendingMessage?: boolean
+// logMessageReceivedFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
+// logSendingMessageFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
+
+test("bridge options: set logger", async () => {
+  jest.setTimeout(10000)
+  await bridge.connect()
+  const logList: string[] = []
+  bridge.setOptions({
+    logger: (...data) => {
+      logList.push(JSON.stringify(data))
+    },
+  })
+
+  // CLEANUP
+  bridge.setOptions({
+    logger: undefined,
   })
 })

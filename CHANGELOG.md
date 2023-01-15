@@ -1,16 +1,13 @@
 ## 0.2.0
 
-More or less a rewrite of internals, but the API is almost the same.
+Total rewrite of internals, but the API is almost the same.
 
 - Add promise pattern (in addition to callback)\*
 - Add requestMessage to response/resolve callback (Tracked version)\*
-- Add full flow test with async server call
+- Add full tests for all features, including full flow test.
 - Removed _subscribeQuery\*\*_
 
 \*Full track for handling of multiple of (the same or different) requests, so it's possible to use Promise.all etc.
-
-_\*\*subscribeQuery was more or less unnecessary abstraction of subscribeEvent, and it do not support the new promise pattern._
-_There are en example in the example folder for subscribe query is needed_
 
 ```ts
 // before: (and now! you can still do it this way)
@@ -35,9 +32,13 @@ const { response, request, responseMessage, requestMessage } =
 
 ### Breaking changes
 
+- Export **MessageBridgeService** has been removed (it was an alias for **SignalRMessageBridgeService**)
+
+Use **SignalRMessageBridgeService**, **WebSocketMessageBridgeService** or **ClientSideMessageBridgeService** instead.
+
 Almost no changes to the base: **sendQuery**, **sendCommand**, **sendEvent**, **subscribeEvent**
 
-But onSuccess second argument is now a full RequestResponse<TRequest,TResponse>)
+- **onSuccess** and **onError** methods are identical to the new tracked versions: RequestResponse<TRequest,TResponse>)
 
 ```ts
 // before
@@ -65,11 +66,18 @@ const { response, request, responseMsg, requestMsg } = await bridge.sendQueryTra
 })
 ```
 
-**subscribeQuery** is removed !
+- **subscribeQuery** is removed !
 
-- "helper" (static methods) has been moved to a separate file
+_\*\*subscribeQuery was more or less unnecessary abstraction of subscribeEvent, and it do not support the new promise pattern._
+_There are en example in the example folder for subscribe query is needed_
+
+- "helper" (static methods, _createMessage_ etc..) has been moved to a separate file _(Not part of the class anymore)_
+
+- **Message** is no longer a class, but an typescript type
 
 Optimize Message by removing "class" version and only use interface (typescript type).
+
+Notes:
 
 **trackId** is optional but it will be create by createMessage, createCommandMessage and createQueryMessage. _(Helper methods)_
 
@@ -80,82 +88,28 @@ You can still create the id, but it's not recommended.
 If you need the message (fx its trackId) before it's sent:
 
 ```ts
-// From:
-bridge.sendCommand(name, payload)
+// Normal use
+bridge.sendCommand({ name, payload })
 
-// To: (custom send where message is created before sent)
+// If trackId is needed before sent (Or other properties from the created message)
 const msg = createCommandMessage({ name, payload, module })
-bridge.sendMessage(msg)
+bridge.sendMessage({
+  requestMessage: msg,
+})
 ```
 
 ### Optional breaking changes
 
-If you extends the MessageBridgeServiceBase class, the subscriptions lists has change names to be more descriptive.
-
-- Some internal names has changed
-
-## 0.1.12
-
-Add onClose
-
-## 0.1.11
-
-Export alle message bridge types from index.js (index.ts),
-to avoid multiple import of message bridge elements
-
-## 0.1.10
-
-Add debugLogging filters:
-
-- messageReceivedFilter = undefined (undefined | string RegExp)
-- sendingMessageFilter = undefined (undefined | string RegExp)
-
-It filter's message names (Only log messages with matching name)
+Almost all code is rewritten, so if you have extended the base class, there are a lot of changes.
 
 ```ts
-// EX:
-messageBridge.debugLogging.messageReceivedFilter = /^area/
+// Take a look at the base, but it's important to call super.methodName()
+// for most of the protected methods, at least for the ones that are called:
+onConnect()
+onError()
+onClose()
 ```
 
-## 0.1.9
+## < 0.2.0
 
-module (as optional string) is added to the message interface (and create methods)
-
-## 0.1.5 message-bridge-js@commonjs
-
-Publish a commonjs build under tag @commonjs
-
-To install `npm i message-bridge-js@commonjs` or `yarn add message-bridge-js@commonjs`
-
-## 0.1.0-4
-
-Split into a base class `MessageBridgeServiceBase` an different network implementations.
-
-There are now two network implementations:
-
-- SignalRMessageBridgeService (MessageBridgeService)
-- WebSocketConnectionService
-
-The exprted `MessageBridgeService` is the SignalRMessageBridgeService - `So no real changes except the onError`
-
-### Breaking changes
-
-- onError now take an 'Error' instead of a 'string'
-
-## 0.0.10
-
-Add **onError** on subscribeQuery
-
-## 0.0.5
-
-Add **options?: IHttpConnectionOptions** on **connect** method
-
-## 0.0.2
-
-Add cdn build (for direct use in a browser)
-
-https://unpkg.com/message-bridge-js/cdn-build/MessageBridgeService.js
-
-## 0.0.1
-
-Initial version
+See git history for changes before 0.2.0

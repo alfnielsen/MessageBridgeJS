@@ -2,6 +2,8 @@ export enum RequestType {
   GetTodoItemQuery = "GetTodoItemQuery",
   UpdateTodoItemCommand = "UpdateTodoItemCommand",
   TodoItemUpdated = "TodoItemUpdated",
+  Ping = "Ping",
+  Pong = "Pong",
 }
 
 export type Store = {
@@ -24,6 +26,7 @@ export type UpdateTodoItemCommand = {
 export type GetTodoItemQueryResponse = {
   items: TodoItem[]
 }
+
 export type GetTodoItemQuery = {
   search: string
   throwError?: boolean

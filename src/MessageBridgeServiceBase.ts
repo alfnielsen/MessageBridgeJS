@@ -22,14 +22,6 @@ import {
 
 export abstract class MessageBridgeServiceBase {
   connected = false
-  debugLogger: (...data: any[]) => void = console?.log ?? (() => {}) // set custom logger
-  debugLogging = {
-    messageReceived: false,
-    sendingMessage: false,
-    messageReceivedFilter: undefined as undefined | string | RegExp,
-    sendingMessageFilter: undefined as undefined | string | RegExp,
-  }
-
   subscribedTrackIdMap: {
     [trackId: string]: InternalTrackedSubscribeResponseWithCatch<any, any>
   } = {}
@@ -41,7 +33,14 @@ export abstract class MessageBridgeServiceBase {
   history: Message[] = []
   bridgeErrors: unknown[] /*Error*/ = []
 
-  options: BridgeOptions = {}
+  options: BridgeOptions = {
+    logger: (...data: any[]) => console?.log ?? (() => {}),
+    logParseIncomingMessageError: true,
+    timeoutFromBridgeOptionsMessage: (ms: number) =>
+      `Timeout after ${ms}ms (BridgeOptions.timeout)`,
+    timeoutFromRequestOptionsMessage: (ms: number) =>
+      `Timeout after ${ms}ms (RequestOptions.timeout)`,
+  }
 
   constructor(public wsUri: string) {}
 
@@ -55,17 +54,17 @@ export abstract class MessageBridgeServiceBase {
 
   // the following methods can overwritten with class inheritance
   // but should override version should call super.methodName()
-  onConnect() {
+  protected onConnect() {
     this.connected = true
     this.options.onConnect?.()
   }
-  onError(err?: unknown /*Error*/, eventOrData?: unknown) {
+  protected onError(err?: unknown /*Error*/, eventOrData?: unknown) {
     if (err !== undefined) {
       this.bridgeErrors.push(err)
     }
     this.options.onError?.(err, eventOrData)
   }
-  onClose(err?: unknown /*Error*/, eventOrData?: unknown) {
+  protected onClose(err?: unknown /*Error*/, eventOrData?: unknown) {
     if (err !== undefined) {
       this.bridgeErrors.push(err)
     }
@@ -75,7 +74,7 @@ export abstract class MessageBridgeServiceBase {
 
   // base methods (should mostly not be overwritten)
 
-  setOptionalRequestTimeout<TRequest = any, TSchema = any>({
+  protected setOptionalRequestTimeout<TRequest = any, TSchema = any>({
     requestMessage,
     timeout,
     onTimeout,
@@ -86,12 +85,17 @@ export abstract class MessageBridgeServiceBase {
   }) {
     let reason: string
     let timeoutMs: number | undefined
+
     if (this.options.timeout !== undefined) {
-      reason = `Timeout after ${this.options.timeout}ms (Set in BridgeOptions.timeout)`
+      reason =
+        this.options.timeoutFromBridgeOptionsMessage?.(this.options.timeout) ??
+        `timeout after ${this.options.timeout}`
       timeoutMs = this.options.timeout
     }
     if (timeout !== undefined) {
-      reason = `Timeout after ${timeout}ms (Set in RequestOptions.timeout)`
+      reason =
+        this.options.timeoutFromRequestOptionsMessage?.(timeout) ??
+        `timeout after ${timeout}`
       timeoutMs = timeout
     }
     if (timeoutMs === undefined) {
@@ -159,7 +163,7 @@ export abstract class MessageBridgeServiceBase {
     })
   }
 
-  private sendMessagePromiseHandler<
+  protected sendMessagePromiseHandler<
     TRequest = any,
     TResponse = any,
     TError = any,
@@ -333,31 +337,33 @@ export abstract class MessageBridgeServiceBase {
     }
     try {
       const msg = createMessageFromDto(messageDto)
-      if (this.debugLogging.messageReceived) {
+      if (this.options?.logger && this.options?.logMessageReceived) {
         let log = true
-        if (this.debugLogging.messageReceivedFilter) {
-          log = !!msg.name.match(this.debugLogging.messageReceivedFilter)
+        if (this.options?.logMessageReceivedFilter) {
+          log = !!msg.name.match(this.options?.logMessageReceivedFilter)
         }
         if (log) {
-          this.debugLogger("Bridge (messageReceived): ", msg)
+          this.options.logger("Bridge (messageReceived): ", msg)
         }
       }
       this.handleIncomingMessage(msg)
     } catch (e) {
       this.onError(e as Error)
-      console.log("Error in response handle for message: " + e)
+      if (this.options?.logger && this.options?.logParseIncomingMessageError) {
+        this.options.logger("Bridge-Error (parse messageReceived): ", e)
+      }
     }
   }
 
   protected internalSendMessage(msg: Message) {
     this.history.push(msg)
-    if (this.debugLogging.sendingMessage) {
+    if (this.options?.logger && this.options?.logSendingMessage) {
       let log = true
-      if (this.debugLogging.sendingMessageFilter) {
-        log = !!msg.name.match(this.debugLogging.sendingMessageFilter)
+      if (this.options?.logSendingMessageFilter) {
+        log = !!msg.name.match(this.options?.logSendingMessageFilter)
       }
       if (log) {
-        this.debugLogger("Bridge (sendingMessage): ", msg)
+        this.options.logger("Bridge (sendingMessage): ", msg)
       }
     }
     this.options.onSend?.(msg)

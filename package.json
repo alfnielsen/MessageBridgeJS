@@ -18,10 +18,12 @@
   "source": "src/index.ts",
   "scripts": {
     "test:all": "yarn jest --runInBand --detectOpenHandles",
+    "test:flow": "yarn jest -i tests/fullFlow.test.ts --detectOpenHandles",
     "test:errors": "yarn jest -i tests/handleErrors.test.ts --detectOpenHandles",
     "test:options": "yarn jest -i tests/bridgeOptions.test.ts --detectOpenHandles",
     "test:request": "yarn jest -i tests/requestOptions.test.ts --detectOpenHandles",
     "test:parallel": "yarn jest -i tests/parallel.test.ts --detectOpenHandles",
+    "test:event": "yarn jest -i tests/sendEvent.test.ts --detectOpenHandles",
     "build": "microbundle --format umd,cjs,es",
     "publish": "npm publish"
   },

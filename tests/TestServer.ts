@@ -1,4 +1,4 @@
-import { InMemoryClientSideServer } from "../src/connection-protocols/InMemoryClientSideServer"
+import { InMemoryClientSideServer } from "../src/services/InMemoryClientSideServer"
 import {
   GetTodoItemQuery,
   GetTodoItemQueryResponse,
@@ -18,8 +18,8 @@ function createTestServer() {
   ]
   server.addCommand<UpdateTodoItemCommand, UpdateTodoItemCommandResponse>(
     RequestType.UpdateTodoItemCommand,
-    async ({ request, event, error, response }) => {
-      const todo = server.store.todos.find((t) => t.id === request.id)
+    async ({ request, event, error, response, store }) => {
+      const todo = store.todos.find((t) => t.id === request.id)
       if (todo) {
         todo.title = request.title
       }
@@ -39,11 +39,17 @@ function createTestServer() {
       response({ done: true })
     },
   )
+  server.addEventListener(RequestType.Ping, ({ event }) => {
+    setTimeout(() => {
+      event(RequestType.Pong, {})
+    })
+  })
+
   server.addQuery<GetTodoItemQuery, GetTodoItemQueryResponse>(
     RequestType.GetTodoItemQuery,
-    async ({ request, response, error }) => {
+    async ({ request, response, error, store }) => {
       request
-      const items = server.store.todos.filter((t) =>
+      const items = store.todos.filter((t) =>
         t.title.toLowerCase().includes(request.search.toLowerCase()),
       )
       if (request.throwError) {

@@ -1,8 +1,8 @@
 import { Message, RequestMaybeNoError, RequestResponse } from "../src/MessageBridgeTypes"
-import { ClientSideMessageBridgeService } from "../src/connection-protocols/ClientSideMessageBridgeService"
+import { ClientSideMessageBridgeService } from "../src/services/ClientSideMessageBridgeService"
 import { GetTodoItemQuery, GetTodoItemQueryResponse, RequestType } from "./TestInterfaces"
 import { createTestServer } from "./TestServer"
-import { RequestErrorResponse } from "../src/connection-protocols/InMemoryClientSideServer"
+import { RequestErrorResponse } from "../src/services/InMemoryClientSideServer"
 
 // --------------------- error tracking ---------------------
 const bridge = new ClientSideMessageBridgeService("ws://localhost:1234")

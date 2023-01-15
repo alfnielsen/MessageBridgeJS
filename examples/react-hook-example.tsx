@@ -1,3 +1,10 @@
+/**
+ * See the tests for examples of all the features of the MessageBridge
+ * This is an example of how it can be used with React (as hooks)
+ *
+ * It some point there may come a React specific package for this.
+ */
+
 //import React, { useCallback, useEffect, useState } from "react"
 import { Message } from "../src/MessageBridgeTypes"
 import { WebsocketMessageBridgeService as MessageBridgeService } from "../src/WebsocketMessageBridgeService"

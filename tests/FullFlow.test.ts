@@ -1,5 +1,5 @@
 import { RequestResponse } from "../src/MessageBridgeTypes"
-import { ClientSideMessageBridgeService } from "../src/connection-protocols/ClientSideMessageBridgeService"
+import { ClientSideMessageBridgeService } from "../src/services/ClientSideMessageBridgeService"
 import {
   GetTodoItemQuery,
   GetTodoItemQueryResponse,

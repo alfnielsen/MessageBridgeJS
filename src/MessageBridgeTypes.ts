@@ -10,14 +10,25 @@ export type OmitAndOptional<
 // bridge
 
 export type BridgeOptions = {
+  // add listeners
   onMessage?: (msg: Message) => void
   onSend?: (msg: Message) => void
   onError?: (err?: unknown /*Error*/, eventOrData?: unknown) => void
   onClose?: (err?: unknown /*Error*/, eventOrData?: unknown) => void
   onConnect?: () => void
-  avoidThrowOnNonTrackedError?: boolean
-  throwOnTrackedError?: boolean
-  timeout?: number
+  // handle errors and timeouts
+  avoidThrowOnNonTrackedError?: boolean // (default: undefined)
+  throwOnTrackedError?: boolean // (default: undefined)
+  timeout?: number // (default: undefined)
+  timeoutFromBridgeOptionsMessage?: (ms: number) => string // (has default implementation)
+  timeoutFromRequestOptionsMessage?: (ms: number) => string // (has default implementation)
+  // debugging
+  logger?: (...data: any[]) => void // set custom logger (default: console?.log)
+  logParseIncomingMessageError?: boolean // (default: true)
+  logMessageReceived?: boolean // log all messages received
+  logSendingMessage?: boolean // log all messages sent
+  logMessageReceivedFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
+  logSendingMessageFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
 }
 
 // enums (These are runtime enums)
@@ -96,7 +107,7 @@ export type SubscribeResponseWithCallbacks<TRequest, TResponse, TError = any> = 
 
 export type SubscribeEvent<TResponse> = (
   payload: TResponse,
-  bridgeMessage: Message<TResponse>,
+  eventMessage: Message<TResponse>,
 ) => void
 
 // Error
