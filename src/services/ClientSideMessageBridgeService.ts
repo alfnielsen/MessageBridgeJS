@@ -17,7 +17,9 @@ export class ClientSideMessageBridgeService extends MessageBridgeServiceBase {
       throw new Error("No server set")
     }
     this.server?.connect((msg) => {
-      this.onMessage(msg)
+      // ensure that no object reference is passed to the client
+      const msgDetachRef = JSON.parse(JSON.stringify(msg))
+      this.onMessage(msgDetachRef)
       this.onConnect()
     })
     return Promise.resolve()
@@ -26,8 +28,10 @@ export class ClientSideMessageBridgeService extends MessageBridgeServiceBase {
     this.onClose()
   }
   sendNetworkMessage(msg: Message) {
+    // ensure that no object reference is passed to the server
+    const msgDetachRef = JSON.parse(JSON.stringify(msg))
     setTimeout(() => {
-      this.server?.onMessage(msg)
+      this.server?.onMessage(msgDetachRef)
     }, 10)
   }
 }
