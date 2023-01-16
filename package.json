@@ -1,6 +1,6 @@
 {
   "name": "message-bridge-js",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "homepage": "https://github.com/alfnielsen/MessageBridgeJS",
   "repository": {
     "type": "git",
@@ -27,7 +27,7 @@
     "test:logger": "yarn jest -i tests/logger.test.ts --runInBand --detectOpenHandles",
     "test:intercept": "yarn jest -i tests/intercept.test.ts --runInBand --detectOpenHandles",
     "test:cancel": "yarn jest -i tests/cancel.test.ts --runInBand --detectOpenHandles",
-    "build": "microbundle --format umd,cjs,es",
+    "build": "microbundle --format modern,umd,cjs,es",
     "publish": "npm publish"
   },
   "dependencies": {
