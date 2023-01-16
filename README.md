@@ -173,7 +173,7 @@ The frontend will add a **trackId** which in the backend will be added in the re
 The message is sent through a websocket and deserialize its payload in the backend.
 
 The backend handles the Command/Query/Event and create a response message.  
-The sent the response message back to the frontend including correct **type** and the **trackId**
+Then sent the response message back to the frontend including correct **type** and the **trackId**
 
 The server can also send events to the frontend. _(without any prior request)_
 
@@ -478,12 +478,14 @@ The bridge can be used with any frontend framework, but here is an example of ho
 ```ts
 function useGetTodo(id: number): Promise<TodoItem | undefined> {
   const [todo, setTodo] = useState<TodoItem | undefined>()
-  useEffect(async () => {
-    const todos = await bridge.sendQuery<GetTodoItemQuery, GetTodoItemQueryResponse>({
-      name: RequestType.GetTodoItemQuery,
-      payload: { id },
-    })
-    setTodo(todos?.[0])
+  useEffect(() => {
+    const fetchTodoes = async () => {
+      const todos = await bridge.sendQuery<GetTodoItemQuery, GetTodoItemQueryResponse>({
+        name: RequestType.GetTodoItemQuery,
+        payload: { id },
+      })
+      setTodo(todos?.[0])
+    }
     const unsub = bridge.subscribeEvent<TodoItemUpdatedEvent>({
       name: RequestType.TodoItemUpdated,
       onEvent: (todoEvent) => {
