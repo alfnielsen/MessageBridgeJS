@@ -15,6 +15,17 @@ export function createMessageFromDto<TPayload = any, TSchema = any>(
   return msg
 }
 
+export function MapResponseType(type: MessageType) {
+  switch (type) {
+    case MessageType.Command:
+      return MessageType.CommandResponse
+    case MessageType.Query:
+      return MessageType.QueryResponse
+    default:
+      return type
+  }
+}
+
 export function createMessage<TPayload = any | undefined, TSchema = any>(
   opt: OmitAndOptional<
     Message<TPayload, TSchema>,
