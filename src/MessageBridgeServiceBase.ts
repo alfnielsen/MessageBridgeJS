@@ -41,7 +41,7 @@ export abstract class MessageBridgeServiceBase {
     allowResponseValueWhenCancelled: false,
     keepHistoryForReceivedMessages: false,
     keepHistoryForSendingMessages: false,
-    logger: (...data: any[]) => console?.log ?? (() => {}),
+    logger: console?.log ?? (() => {}),
     logParseIncomingMessageError: true,
     timeoutFromBridgeOptionsMessage: (ms: number) =>
       `Timeout after ${ms}ms (BridgeOptions.timeout)`,
