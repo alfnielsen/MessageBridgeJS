@@ -1,10 +1,10 @@
 /// <reference types="node" />
-import { Message, RequestResponse, SubscribeEvent, InternalTrackedSubscribeResponseWithCatch, OmitAndOptional, SubscribeError, RequestOptionsTracked, BridgeOptions, RequestMaybeNoError, SendMessageOptions } from "./MessageBridgeTypes";
+import { Message, RequestResponse, SubscribeEvent, InternalTrackedRequest, OmitAndOptional, OnTimeoutHandler, RequestOptions, BridgeOptions, RequestMaybeNoError, SendMessageOptions, CreatedMessage, CreatedEvent, EventOptions } from "./MessageBridgeTypes";
 export declare abstract class MessageBridgeServiceBase {
     wsUri: string;
     connected: boolean;
-    subscribedTrackIdMap: {
-        [trackId: string]: InternalTrackedSubscribeResponseWithCatch<any, any>;
+    trackedRequestMap: {
+        [trackId: string]: InternalTrackedRequest<any, any>;
     };
     subscribedEventListMap: {
         [eventName: string]: SubscribeEvent<any>[];
@@ -18,13 +18,14 @@ export declare abstract class MessageBridgeServiceBase {
     abstract sendNetworkMessage(msg: Message): void;
     setOptions(opt: BridgeOptions): void;
     getTrackedRequestMessage(trackId: string): Message | undefined;
+    cancelRequest(trackId: string): void;
     protected onConnect(): void;
     protected onError(err?: unknown, eventOrData?: unknown): void;
     protected onClose(err?: unknown, eventOrData?: unknown): void;
     protected setOptionalRequestTimeout<TRequest = any, TSchema = any>({ requestMessage, timeout, onTimeout, }: {
         requestMessage: Message<TRequest, TSchema>;
         timeout: number | undefined;
-        onTimeout: SubscribeError<string, TRequest>;
+        onTimeout: OnTimeoutHandler<string, TRequest>;
     }): NodeJS.Timeout | undefined;
     sendMessageTracked<TRequest = any, TResponse = any, TError = any, TSchema = any>(opt: SendMessageOptions<TRequest, TResponse, TError, TSchema>): Promise<RequestResponse<TRequest, TResponse, TError>>;
     /**
@@ -32,18 +33,25 @@ export declare abstract class MessageBridgeServiceBase {
      * onSuccess contains the response in the first argument (and the the tracked/full response in the second argument)
      */
     sendMessage<TRequest = any, TResponse = any, TError = any, TSchema = any>(opt: SendMessageOptions<TRequest, TResponse, TError, TSchema>): Promise<TResponse>;
-    protected sendMessagePromiseHandler<TRequest = any, TResponse = any, TError = any, TSchema = any>({ handleResponseReject, requestMessage, onSuccess, onError, timeout, }: SendMessageOptions<TRequest, TResponse, TError, TSchema> & {
-        handleResponseReject: (isError: boolean, response: RequestResponse<TRequest, TResponse, TError>, error?: RequestMaybeNoError<any, TRequest>) => void;
+    protected sendMessagePromiseHandler<TRequest = any, TResponse = any, TError = any, TSchema = any>({ handleError, handleSuccess, requestMessage, requestOptions, }: SendMessageOptions<TRequest, TResponse, TError, TSchema> & {
+        handleError: (cancelled: boolean, response: RequestResponse<TRequest, TResponse, TError>, error?: RequestMaybeNoError<any, TRequest>) => void;
+        handleSuccess: (cancelled: boolean, response: RequestResponse<TRequest, TResponse, TError>) => void;
     }): void;
+    private handleCancelOptions;
+    private handleCancelResponse;
     subscribeEvent<TResponse = any>({ name, onEvent, }: {
         name: string | string[];
         onEvent: SubscribeEvent<TResponse>;
     }): () => void;
-    sendCommand<TRequest = any, TResponse = any, TSchema = any>(opt: RequestOptionsTracked<TRequest, TResponse>): Promise<TResponse>;
-    sendCommandTracked<TRequest = any, TResponse = any, TSchema = any>(opt: RequestOptionsTracked<TRequest, TResponse>): Promise<RequestResponse<TRequest, TResponse, TSchema>>;
-    sendQuery<TRequest = any, TResponse = any, TError = any, TSchema = any>(opt: RequestOptionsTracked<TRequest, TResponse>): Promise<TResponse>;
-    sendQueryTracked<TRequest = any, TResponse = any, TError = any, TSchema = any>(opt: RequestOptionsTracked<TRequest, TResponse, TError>): Promise<RequestResponse<TRequest, TResponse, TError>>;
-    sendEvent<TPayload = any>(top: OmitAndOptional<Message<TPayload>, "trackId" | "created" | "isError" | "type", "direction">): Message<undefined, any>;
+    private createTrackedMessage;
+    createCommand<TRequest = any, TResponse = any, TError = any, TSchema = any>(requestOptions: RequestOptions<TRequest, TResponse>): CreatedMessage<TRequest, TResponse, TError, TSchema>;
+    createQuery<TRequest = any, TResponse = any, TError = any, TSchema = any>(requestOptions: RequestOptions<TRequest, TResponse>): CreatedMessage<TRequest, TResponse, TError, TSchema>;
+    sendCommand<TRequest = any, TResponse = any, TError = any, TSchema = any>(requestOptions: RequestOptions<TRequest, TResponse>): Promise<TResponse>;
+    sendCommandTracked<TRequest = any, TResponse = any, TError = any, TSchema = any>(requestOptions: RequestOptions<TRequest, TResponse>): Promise<RequestResponse<TRequest, TResponse, TError>>;
+    sendQuery<TRequest = any, TResponse = any, TError = any, TSchema = any>(requestOptions: RequestOptions<TRequest, TResponse>): Promise<TResponse>;
+    sendQueryTracked<TRequest = any, TResponse = any, TError = any, TSchema = any>(requestOptions: RequestOptions<TRequest, TResponse, TError>): Promise<RequestResponse<TRequest, TResponse, TError>>;
+    createEvent<TPayload = any>(eventOptions: EventOptions<TPayload>): CreatedEvent<TPayload>;
+    sendEvent<TPayload = any>(eventOptions: OmitAndOptional<Message<TPayload>, "trackId" | "created" | "isError" | "type", "direction">): void;
     protected onMessage(messageString: string | Message): void;
     protected internalSendMessage(msg: Message): void;
     protected handleIncomingMessage(msg: Message): void;

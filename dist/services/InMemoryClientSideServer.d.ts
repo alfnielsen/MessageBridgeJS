@@ -11,8 +11,10 @@ export type RequestHandler<TRequest = any, TResponse = any, TStore = any> = (opt
     request: TRequest;
     store: TStore;
     event: (name: string, payload: any) => void;
-    error: (reason: any) => void;
+    error: (reason: any, cancelled?: boolean, timedOut?: boolean) => void;
     response: (response: TResponse) => void;
+    sendResponseMessage: (responseMessage: Message<TRequest, TResponse>) => void;
+    createResponseMessage(response: TResponse): Message<TRequest, TResponse>;
 }) => void;
 export type RequestEventHandler<TRequest = any, TResponse = any, TStore = any> = (opt: {
     requestMessage: Message<TRequest, TResponse>;
@@ -36,8 +38,19 @@ export declare class InMemoryClientSideServer<TStore> implements MessageBridgeCl
     loadFromLocalStorage(key: string): void;
     sendMessage?: (msg: Message<RequestErrorResponse>) => void;
     connect(sendMessage: (msg: Message) => void): void;
-    sendError(payload: RequestErrorResponse, trackId?: string): void;
-    sendResponse(type: MessageType, name: string, payload: any, trackId: string): void;
+    sendError(payload: RequestErrorResponse, trackId?: string, cancelled?: boolean, timedOut?: boolean): void;
+    createMessage(opt: {
+        type: MessageType;
+        name: string;
+        payload: any;
+        trackId: string;
+    }): Message<any, any>;
+    sendResponse(opt: {
+        type: MessageType;
+        name: string;
+        payload: any;
+        trackId: string;
+    }): void;
     sendEvent(name: string, payload: any): void;
     onMessage(requestMessage: Message | string): void;
     serverHandleCommand(requestMessage: Message): void;

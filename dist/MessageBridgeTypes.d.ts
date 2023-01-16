@@ -4,13 +4,22 @@ export type BridgeOptions = {
     onMessage?: (msg: Message) => void;
     onSend?: (msg: Message) => void;
     onError?: (err?: unknown, eventOrData?: unknown) => void;
+    onSuccess?: (msg: RequestResponse) => void;
     onClose?: (err?: unknown, eventOrData?: unknown) => void;
     onConnect?: () => void;
+    onCancel?: (msg: Message) => void;
     interceptSendMessage?: (msg: Message) => Message;
     interceptReceivedMessage?: (msg: Message) => Message;
+    interceptCreatedMessageOptions?: (msg: CreatedMessage) => CreatedMessage;
+    interceptCreatedEventMessageOptions?: (msg: CreatedEvent) => CreatedEvent;
     avoidThrowOnNonTrackedError?: boolean;
     throwOnTrackedError?: boolean;
     timeout?: number;
+    resolveCancelledNonTrackedRequest?: boolean;
+    sendCancelledRequest?: boolean;
+    callOnErrorWhenRequestIsCancelled?: boolean;
+    callOnSuccessWhenRequestIsCancelled?: boolean;
+    allowResponseValueWhenCancelled?: boolean;
     timeoutFromBridgeOptionsMessage?: (ms: number) => string;
     timeoutFromRequestOptionsMessage?: (ms: number) => string;
     keepHistoryForReceivedMessages?: boolean;
@@ -42,63 +51,80 @@ export type Message<TPayload = any, TSchema = any> = {
     name: string;
     type: MessageType;
     isError: boolean;
+    cancelled?: boolean;
+    timedOut?: boolean;
     trackId: string;
     created: string;
     payload: TPayload;
     schema?: TSchema;
     direction: MessageDirection;
 };
-export type RequestResponse<TRequest, TResponse, TError = any> = {
+export type RequestResponse<TRequest = any, TResponse = any, TError = any> = {
     response: TResponse;
     request: TRequest;
     responseMessage: Message<TResponse>;
     requestMessage: Message<TRequest>;
+    requestOptions: RequestOptions<TRequest, TResponse, TError>;
     isError?: boolean;
     error?: TError;
     errorMessage?: Message<TError>;
+    cancelled?: boolean;
+    timedOut?: boolean;
 };
-export type RequestOptionsTracked<TRequest, TResponse, TError = any> = {
+export type RequestOptions<TRequest, TResponse, TError = any> = {
     name: string;
     payload: TRequest;
-    onSuccess?: SubscribeResponseTracked<TRequest, TResponse>;
-    onError?: SubscribeErrorResponseTracked<TRequest, TResponse, TError>;
+    onSuccess?: TrackedOnSuccess<TRequest, TResponse>;
+    onError?: TrackedOnError<TRequest, TResponse, TError>;
     module?: string;
     timeout?: number;
+    resolveCancelledForNonTracked?: boolean;
+    sendCancelled?: boolean;
+    callOnErrorWhenRequestIsCancelled?: boolean;
+    callOnSuccessWhenRequestIsCancelled?: boolean;
+    allowResponseValueWhenCancelled?: boolean;
 };
 export type SendMessageOptions<TRequest = any, TResponse = any, TError = any, TSchema = any> = {
     requestMessage: Message<TRequest, TSchema>;
-    onSuccess?: SubscribeResponseTracked<TRequest, TResponse>;
-    onError?: SubscribeErrorResponseTracked<TRequest, TResponse, TError>;
-    timeout?: number;
+    requestOptions: RequestOptions<TRequest, TResponse, TError>;
 };
-export type SubscribeResponseAsync<TRequest, TResponse> = (opt: RequestResponse<TRequest, TResponse>) => Promise<RequestResponse<TRequest, TResponse>>;
-export type SubscribeResponseTracked<TRequest, TResponse> = (opt: RequestResponse<TRequest, TResponse>) => void;
-export type SubscribeResponseWithCallbacks<TRequest, TResponse, TError = any> = {
-    onSuccess?: SubscribeResponseAsync<TRequest, TResponse>;
-    onError?: SubscribeErrorAsync<TError, TRequest>;
-    requestMessage: Message<TRequest>;
+export type CreatedMessage<TRequest = any, TResponse = any, TError = any, TSchema = any> = {
+    trackId: string;
+    requestMessage: Message<TRequest, TSchema>;
+    requestOptions: RequestOptions<TRequest, TResponse, TError>;
+    send: () => Promise<TResponse>;
+    sendTracked: () => Promise<RequestResponse<TRequest, TResponse, TError>>;
+    cancel: () => void;
 };
+export type CreatedEvent<TPayload = any> = {
+    trackId: string;
+    requestMessage: Message<TPayload>;
+    requestOptions: EventOptions<TPayload>;
+    send: () => void;
+    cancel: () => void;
+};
+export type EventOptions<TPayload = any> = {
+    name: string;
+    payload: TPayload;
+    module?: string;
+    sendCancelled?: boolean;
+};
+export type TrackedOnSuccess<TRequest, TResponse> = (opt: RequestResponse<TRequest, TResponse>) => void;
+export type TrackedOnError<TRequest = any, TResponse = any, TError = any> = (opt: RequestResponse<TRequest, TResponse, TError>) => void;
 export type SubscribeEvent<TResponse> = (payload: TResponse, eventMessage: Message<TResponse>) => void;
-export type RequestError<TError = any, TRequest = any> = {
-    reason?: TError;
-    request: TRequest;
-    responseMessage?: Message<TError>;
-    requestMessage: Message<TRequest>;
-};
 export type RequestMaybeNoError<TError = any, TRequest = any> = {
     reason?: TError;
     request: TRequest;
     responseMessage?: Message<TError>;
     requestMessage: Message<TRequest>;
 };
-export type SubscribeErrorAsync<TError = any, TRequest = any> = (opt: RequestMaybeNoError<TError, TRequest>) => Promise<RequestResponse<TError, TRequest>>;
-export type SubscribeError<TError = any, TRequest = any> = (opt: RequestMaybeNoError<TError, TRequest>) => void;
-export type SubscribeErrorResponseTracked<TRequest = any, TResponse = any, TError = any> = (opt: RequestResponse<TRequest, TResponse, TError>) => void;
-export type InternalTrackedSubscribeResponse<TResponse> = (responseMessage: Message<TResponse>) => void;
-export type InternalTrackedSubscribeError<TError> = (responseMessage: Message<TError> | undefined) => void;
-export type InternalTrackedSubscribeResponseWithCatch<TRequest, TResponse, TError = any> = {
-    successTrack?: InternalTrackedSubscribeResponse<TResponse>;
-    errorTrack?: InternalTrackedSubscribeError<TError>;
+export type OnTimeoutHandler<TError = any, TRequest = any> = (opt: RequestMaybeNoError<TError, TRequest>) => void;
+export type InternalTrackedOnSuccess<TResponse> = (responseMessage: Message<TResponse>) => void;
+export type InternalTrackedOnError<TError> = (responseMessage: Message<TError> | undefined) => void;
+export type InternalTrackedRequest<TRequest, TResponse, TError = any> = {
+    successTrack: InternalTrackedOnSuccess<TResponse>;
+    errorTrack: InternalTrackedOnError<TError>;
     requestMessage: Message<TRequest>;
+    requestOptions: RequestOptions<TRequest, TResponse, TError>;
 };
 //# sourceMappingURL=MessageBridgeTypes.d.ts.map
