@@ -11,7 +11,10 @@ import {
 import { createTestServer } from "./TestServer"
 
 const bridge = new ClientSideMessageBridgeService("ws://localhost:1234")
-bridge.server = createTestServer()
+
+beforeEach(() => {
+  bridge.server = createTestServer() // reset server
+})
 
 it("test flow: async, non async, cleanup", async () => {
   //@ts-ignore // private/protected method
@@ -91,7 +94,7 @@ it("test flow: async, non async, cleanup", async () => {
   ].join(",")
   expect(historyLog).toBe(expectedHistoryLog)
   expect(bridge.history.length).toBe(6)
-  expect(Object.keys(bridge.subscribedTrackIdMap).length).toBe(0)
+  expect(Object.keys(bridge.trackedRequestMap).length).toBe(0)
 
   // -------------------- Event + Subscription (continues in command!) --------------------
 
@@ -136,7 +139,7 @@ it("test flow: async, non async, cleanup", async () => {
 
   // test response
   expect(requestMessage.payload).toMatchObject({ id: 2, title: "todo2 changed" })
-  var trackIdCount = Object.keys(bridge.subscribedTrackIdMap).length
+  var trackIdCount = Object.keys(bridge.trackedRequestMap).length
   expect(trackIdCount).toBe(0)
 
   // Wait for event
@@ -159,7 +162,7 @@ it("test flow: async, non async, cleanup", async () => {
 
   //console.log("step 5: checks and clean up")
   // check clean up
-  var trackIdCount = Object.keys(bridge.subscribedTrackIdMap).length
+  var trackIdCount = Object.keys(bridge.trackedRequestMap).length
   expect(trackIdCount).toBe(0)
 
   expect(bridge.subscribedEventListMap[RequestType.TodoItemUpdated].length).toBe(1)

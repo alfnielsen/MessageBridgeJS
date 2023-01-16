@@ -47,18 +47,38 @@ function createTestServer() {
 
   server.addQuery<GetTodoItemQuery, GetTodoItemQueryResponse>(
     RequestType.GetTodoItemQuery,
-    async ({ request, response, error, store }) => {
+    async ({
+      request,
+      response,
+      error,
+      store,
+      createResponseMessage,
+      sendResponseMessage,
+    }) => {
       const items = store.todos.filter((t) =>
         t.title.toLowerCase().includes(request.search.toLowerCase()),
       )
+      if (request.log) {
+        console?.log(request.log)
+      }
       if (request.throwError) {
-        error("ServerError(GetTodoItemQuery) Some kind of error!")
+        error(
+          "ServerError(GetTodoItemQuery) Some kind of error!",
+          request.sendCancel,
+          request.sendTimedOut,
+        )
         return
       }
       if (request.sleep) {
         await new Promise((resolve) => setTimeout(resolve, request.sleep))
       }
-      response({ items })
+      if (request.sendCancel) {
+        const resMsg = createResponseMessage({ items })
+        resMsg.cancelled = true
+        sendResponseMessage(resMsg)
+      } else {
+        response({ items })
+      }
     },
   )
   return server

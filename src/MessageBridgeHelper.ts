@@ -15,7 +15,7 @@ export function createMessageFromDto<TPayload = any, TSchema = any>(
   return msg
 }
 
-export function createMessage<TPayload = any, TSchema = any>(
+export function createMessage<TPayload = any | undefined, TSchema = any>(
   opt: OmitAndOptional<
     Message<TPayload, TSchema>,
     "created" | "isError",
@@ -63,16 +63,15 @@ export function createQueryMessage<TRequest = any, TSchema = any>(
   })
 }
 
-export function createEventMessage<TRequest = any>(
+export function createEventMessage<TPayload = any>(
   opt: OmitAndOptional<
-    Message<TRequest>,
+    Message<TPayload>,
     "created" | "isError" | "type",
-    "trackId" | "direction" | "payload"
+    "trackId" | "direction"
   >,
 ) {
-  return createMessage({
+  return createMessage<TPayload>({
     ...opt,
     type: MessageType.Event,
-    payload: undefined,
   })
 }

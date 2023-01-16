@@ -11,7 +11,9 @@ import { createTestServer } from "./TestServer"
 import { RequestErrorResponse } from "../src/services/InMemoryClientSideServer"
 
 const bridge = new ClientSideMessageBridgeService("ws://localhost:1234")
-bridge.server = createTestServer()
+beforeEach(() => {
+  bridge.server = createTestServer() // reset server
+})
 
 // -------------------- debug (logger) --------------------
 
@@ -22,7 +24,7 @@ bridge.server = createTestServer()
 // logSendingMessageFilter?: undefined | string | RegExp // restrict logging to messages matching this filter
 
 test("bridge options: set logger", async () => {
-  bridge.server = createTestServer() // reset server
+  // reset server
   await bridge.connect()
   const logList: Message[] = []
   const logListType: string[] = []

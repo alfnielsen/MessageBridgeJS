@@ -20,6 +20,7 @@ export type UpdateTodoItemCommandResponse = {
 export type UpdateTodoItemCommand = {
   id: number
   title: string
+  // testing options:
   throwError?: boolean
   sleep?: number
 }
@@ -29,6 +30,10 @@ export type GetTodoItemQueryResponse = {
 
 export type GetTodoItemQuery = {
   search: string
+  // testing options:
   throwError?: boolean
   sleep?: number
+  sendCancel?: boolean
+  sendTimedOut?: boolean
+  log?: string
 }

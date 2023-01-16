@@ -1,9 +1,4 @@
-import {
-  Message,
-  MessageType,
-  RequestMaybeNoError,
-  RequestResponse,
-} from "../src/MessageBridgeTypes"
+import { MessageType } from "../src/MessageBridgeTypes"
 import { ClientSideMessageBridgeService } from "../src/services/ClientSideMessageBridgeService"
 import {
   GetTodoItemQuery,
@@ -13,16 +8,16 @@ import {
   UpdateTodoItemCommandResponse,
 } from "./TestInterfaces"
 import { createTestServer } from "./TestServer"
-import { RequestErrorResponse } from "../src/services/InMemoryClientSideServer"
 import { createMessage } from "../src/MessageBridgeHelper"
 
 const bridge = new ClientSideMessageBridgeService("ws://localhost:1234")
-bridge.server = createTestServer()
+beforeEach(() => {
+  bridge.server = createTestServer() // reset server
+})
 
 // -------------------- intercept --------------------
 
-test("bridge options: intercept", async () => {
-  bridge.server = createTestServer() // reset server
+test("bridge options: interceptReceivedMessage and interceptSendMessage", async () => {
   await bridge.connect()
 
   bridge.setOptions({
@@ -90,15 +85,55 @@ test("bridge options: intercept", async () => {
   const secret = responseWithSecret.secretData
   expect(secret).toBe("secret")
 
-  expect(isError).toBe(true)
   expect(request).toMatchObject({
     id: 2,
     title: "todo2 changed [intercepted]",
   })
+  expect(isError).toBe(true)
 
   // CLEANUP
   bridge.setOptions({
     interceptReceivedMessage: undefined,
     interceptSendMessage: undefined,
   })
+})
+
+test("bridge options: interceptCreatedMessageOptions", async () => {
+  // reset server
+  await bridge.connect()
+
+  let callSend = 0
+  bridge.setOptions({
+    interceptCreatedMessageOptions: (options) => {
+      return {
+        ...options,
+        send: (...arg) => {
+          //Simple logger interception
+          callSend++
+          return options.send(...arg)
+        },
+      }
+    },
+  })
+
+  await bridge.sendQuery<GetTodoItemQuery, GetTodoItemQueryResponse>({
+    name: RequestType.GetTodoItemQuery,
+    payload: {
+      search: "1",
+    },
+  })
+  await bridge.sendQuery<GetTodoItemQuery, GetTodoItemQueryResponse>({
+    name: RequestType.GetTodoItemQuery,
+    payload: {
+      search: "1",
+    },
+  })
+  await bridge.sendQueryTracked<GetTodoItemQuery, GetTodoItemQueryResponse>({
+    name: RequestType.GetTodoItemQuery,
+    payload: {
+      search: "1",
+    },
+  })
+
+  expect(callSend).toBe(2)
 })

@@ -61,6 +61,32 @@ console.log(
 // => `Query GetTotoItem: Todo with id 25 has title 'todo1'`
 ```
 
+Advanced tracked requests:
+
+```ts
+const query = bridge.createQuery({
+  name: "GetTotoItem",
+  payload: { id: 25 },
+})
+
+const { response, request, requestMessage } = await query.sendTracked()
+// Or
+const response = await query.send()
+
+// Advanced tracked:
+const {
+  trackId, // string (bridge message's track id)
+  requestMessage, //  Message<TRequest, TSchema>
+  requestOptions, // RequestOptions<TRequest, TResponse, TError>
+  send, // () => Promise<TResponse>
+  sendTracked, // () => Promise<RequestResponse<TRequest, TResponse, TError>>
+  cancel, // () => void
+} = bridge.createQuery({
+  name: "GetTotoItem",
+  payload: { id: 25 },
+})
+```
+
 Multiple parallel requests:
 
 ```ts
@@ -193,18 +219,17 @@ Most used commands:
 - subscribeEvent
 - connect
 
+For tracking (error handling and cancellation) use 'create' and then 'send' or 'sendTracked' later.
+
+- createCommand
+- createQuery
+- createEvent
+
 Tracked versions of requests (They resolve the promise with a full RequestResponse<TRequest,TResponse>)  
 It includes the request and response messages (So you can track which request data what used to get the response)
 
 - sendCommandTracked
 - sendQueryTracked
-
-Underlying commands _(can sometime be used to fetch trackId ect...)_
-
-- sendMessage
-- sendMessageTracked
-- onError _(override to handle errors)_
-- onClose _(override to handle close)_
 
 Helper commands _(advanced use)_
 
@@ -236,7 +261,7 @@ Protected commands _(advanced use)_
 <span style="background: green; color: #333; font-weight:bold; padding: 3px">PASS</span> <span style="color: #666;">tests/</span>parallel.test.ts
 
 Test Suites: <span style="color: green; ">10 passed</span>, 10 total  
-Tests: <span style="color: green; ">38 passed</span>, 38 total
+Tests: <span style="color: green; ">53 passed</span>, 53 total
 
 ## Async vs Callback
 
@@ -300,6 +325,24 @@ const { response, error, isError, errorMessage } = await bridge.sendCommandTrack
 })
 ```
 
+## Cancellation
+
+You can cancel a tracked request by using the cancel method. (The server can also send _cancelled: true_ in teh response messsage)
+
+```ts
+const cmd = await bridge.createCommand({
+  name: "CreateTodo",
+  payload: command,
+})
+
+cmd.send().then((response) => {
+  // handle response
+})
+
+// or
+const { cancelled } = await cmd.sendTracked()
+```
+
 ## Bridge options
 
 ```ts
@@ -313,14 +356,16 @@ bridge.setOptions({
   logMessageReceived: true // log all incoming messages (For debugging)
   logSendingMessage: true // log all outgoing messages (For debugging)
 })
-// BridgeOptions defined in MessageBridgeTypes.ts
 export type BridgeOptions = {
   // Add listeners:
   onMessage?: (msg: Message) => void
   onSend?: (msg: Message) => void
   onError?: (err?: unknown /*Error*/, eventOrData?: unknown) => void
+  onSuccess?: (msg: RequestResponse) => void
   onClose?: (err?: unknown /*Error*/, eventOrData?: unknown) => void
   onConnect?: () => void
+  // Can be used to send a cancel request to the server
+  onCancel?: (msg: Message) => void
   // Interception:
   // - can be used to generalize behavior (Happens as early as possible in the process)
   // Happens just after user options is applied. Before stored in track map and before any other actions.
@@ -328,10 +373,21 @@ export type BridgeOptions = {
   // Happens after message-string parsing, but before stored in history, onMessage and all other actions
   // To get request for the message use: getTrackedRequestMessage(trackId: string): Message | undefined
   interceptReceivedMessage?: (msg: Message) => Message // (default: undefined)
+  // Happens after the options for createMessage is applied)
+  interceptCreatedMessageOptions?: (msg: CreatedMessage) => CreatedMessage // (default: undefined)
+  interceptCreatedEventMessageOptions?: (msg: CreatedEvent) => CreatedEvent // (default: undefined)
   // Handle errors and timeouts:
   avoidThrowOnNonTrackedError?: boolean // (default: undefined)
   throwOnTrackedError?: boolean // (default: undefined)
   timeout?: number // (default: undefined)
+  // Cancel
+  // resolve on cancel (Let the process that did the request handle the cancel)
+  resolveCancelledNonTrackedRequest?: boolean // (default: undefined)
+  sendCancelledRequest?: boolean // (default: undefined)
+  callOnErrorOnCancelledRequest?: boolean // (default: undefined)
+  callOnSuccessOnCancelledRequest?: boolean // (default: undefined)
+  // if true, the response can still have a value, else it will be undefined
+  allowResponseOnCancelledTrackedRequest?: boolean // (default: undefined)
   // Debugging options:
   timeoutFromBridgeOptionsMessage?: (ms: number) => string // (has default implementation)
   timeoutFromRequestOptionsMessage?: (ms: number) => string // (has default implementation)
@@ -356,6 +412,15 @@ You can set options for each request.
 - onSuccess // not recommended for most use cases
 - onError // not recommended for most use cases
 - timeout // set timeout for this request (overrides bridge timeout\*)
+- module // info that the server can use
+
+// advanced options:
+
+- resolveCancelledForNonTracked?: boolean
+- sendCancelled?: boolean
+- callOnErrorOnCancelledRequest?: boolean
+- callOnSuccessOnCancelledRequest?: boolean
+- allowResponseOnCancelled?: boolean
 
 \*_The bridge options has NO timeout as default_
 

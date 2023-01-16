@@ -12,7 +12,10 @@ import { RequestErrorResponse } from "../src/services/InMemoryClientSideServer"
 
 // --------------------- error tracking ---------------------
 const bridge = new ClientSideMessageBridgeService("ws://localhost:1234")
-bridge.server = createTestServer()
+
+beforeEach(() => {
+  bridge.server = createTestServer() // reset server
+})
 
 // --------------------- avoidThrowOnNonTrackedError ---------------------
 

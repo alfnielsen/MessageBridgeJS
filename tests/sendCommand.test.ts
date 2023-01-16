@@ -15,7 +15,9 @@ import {
 import { createTestServer } from "./TestServer"
 
 const bridge = new ClientSideMessageBridgeService("ws://localhost:1234")
-bridge.server = createTestServer()
+beforeEach(() => {
+  bridge.server = createTestServer() // reset server
+})
 
 // --------------------- tracked versions ---------------------
 

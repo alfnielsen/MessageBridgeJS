@@ -14,8 +14,10 @@ export type RequestHandler<TRequest = any, TResponse = any, TStore = any> = (opt
   request: TRequest
   store: TStore
   event: (name: string, payload: any) => void
-  error: (reason: any) => void
+  error: (reason: any, cancelled?: boolean, timedOut?: boolean) => void
   response: (response: TResponse) => void
+  sendResponseMessage: (responseMessage: Message<TRequest, TResponse>) => void
+  createResponseMessage(response: TResponse): Message<TRequest, TResponse>
 }) => void
 
 export type RequestEventHandler<TRequest = any, TResponse = any, TStore = any> = (opt: {
@@ -48,26 +50,35 @@ export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServ
     this.sendMessage = sendMessage
   }
 
-  sendError(payload: RequestErrorResponse, trackId?: string) {
+  sendError(
+    payload: RequestErrorResponse,
+    trackId?: string,
+    cancelled?: boolean,
+    timedOut?: boolean,
+  ) {
     const errorMsg = createMessage({
       trackId,
       type: MessageType.Error,
       name: "Error",
       payload: payload,
       direction: MessageDirection.ToClient,
+      cancelled,
+      timedOut,
     })
     //console.log("SERVER: sendError", errorMsg)
     this.sendMessage?.(errorMsg)
   }
 
-  sendResponse(type: MessageType, name: string, payload: any, trackId: string) {
+  createMessage(opt: { type: MessageType; name: string; payload: any; trackId: string }) {
     const responseMessage = createMessage({
-      trackId,
-      type,
-      name,
-      payload,
+      ...opt,
       direction: MessageDirection.ToClient,
     })
+    return responseMessage
+  }
+
+  sendResponse(opt: { type: MessageType; name: string; payload: any; trackId: string }) {
+    const responseMessage = this.createMessage(opt)
     //console.log("SERVER: sendResponse", responseMessage)
     this.sendMessage?.(responseMessage)
   }
@@ -140,21 +151,30 @@ export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServ
   }
   serverHandleCommand(requestMessage: Message) {
     const handler = this.commands[requestMessage.name]
-    const sendResponse = (response: any) => {
-      this.sendResponse(
-        MessageType.CommandResponse,
-        requestMessage.name,
-        response,
-        requestMessage.trackId,
-      )
+    const sendResponseMessage = (responseMessage: Message) => {
+      this.sendMessage?.(responseMessage)
     }
-    const sendError = (reason: any) => {
+    const createResponseMessage = (response: any) => {
+      return this.createMessage({
+        name: requestMessage.name,
+        type: MessageType.CommandResponse,
+        payload: response,
+        trackId: requestMessage.trackId,
+      })
+    }
+    const sendResponse = (response: any) => {
+      const message = createResponseMessage(response)
+      sendResponseMessage(message)
+    }
+    const sendError = (reason: any, cancelled?: boolean, timedOut?: boolean) => {
       this.sendError(
         {
           message: reason,
           request: requestMessage,
         },
         requestMessage.trackId,
+        cancelled,
+        timedOut,
       )
     }
     const fireEvent = (name: string, payload: any) => {
@@ -168,6 +188,8 @@ export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServ
         error: sendError,
         event: fireEvent,
         response: sendResponse,
+        createResponseMessage,
+        sendResponseMessage,
       })
     } catch (e) {
       sendError({
@@ -181,21 +203,30 @@ export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServ
 
   serverHandleQuery(requestMessage: Message) {
     const handler = this.queries[requestMessage.name]
-    const sendResponse = (response: any) => {
-      this.sendResponse(
-        MessageType.QueryResponse,
-        requestMessage.name,
-        response,
-        requestMessage.trackId,
-      )
+    const sendResponseMessage = (responseMessage: Message) => {
+      this.sendMessage?.(responseMessage)
     }
-    const sendError = (reason: any) => {
+    const createResponseMessage = (response: any) => {
+      return this.createMessage({
+        name: requestMessage.name,
+        type: MessageType.QueryResponse,
+        payload: response,
+        trackId: requestMessage.trackId,
+      })
+    }
+    const sendResponse = (response: any) => {
+      const message = createResponseMessage(response)
+      sendResponseMessage(message)
+    }
+    const sendError = (reason: any, cancelled?: boolean, timedOut?: boolean) => {
       this.sendError(
         {
           message: reason,
           request: requestMessage,
         },
         requestMessage.trackId,
+        cancelled,
+        timedOut,
       )
     }
     const fireEvent = (name: string, payload: any) => {
@@ -208,6 +239,8 @@ export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServ
       error: sendError,
       event: fireEvent,
       response: sendResponse,
+      createResponseMessage,
+      sendResponseMessage,
     })
   }
   serverHandleEvent(requestMessage: Message) {
@@ -224,6 +257,7 @@ export class InMemoryClientSideServer<TStore> implements MessageBridgeClientServ
     const fireEvent = (name: string, payload: any) => {
       this.sendEvent(name, payload)
     }
+
     handler({
       requestMessage: requestMessage,
       request: requestMessage.payload,
